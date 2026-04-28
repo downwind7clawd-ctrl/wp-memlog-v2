@@ -17,6 +17,7 @@ dependencies = [
     "tenacity>=8.0",
     "sentence-transformers>=2.2",
     "torch>=2.0",
+    "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]

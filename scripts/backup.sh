@@ -26,8 +26,6 @@ docker run --rm \
 
 # MariaDB dump
 docker exec wp-memlog-db mysqldump -u root -p"${MYSQL_ROOT_PASSWORD}" wp_memlog \
-    > "${BACKUP_DIR}/db_${DATE}.sql" 2>/dev/null || \
-docker exec wp-memlog-db mysqldump -u root -p"${MYSQL_ROOT_PASSWORD:-b6B0JC1vPoYtLtLGfLDNFh9Jvyj5kWSk}" wp_memlog \
     > "${BACKUP_DIR}/db_${DATE}.sql"
 
 echo "Done! Files:"

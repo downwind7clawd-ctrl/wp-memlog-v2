@@ -48,17 +48,15 @@ def post_session(
     )
 
 # Check for existing post with same idem_key
+    post_id = None
+    import json
     try:
         existing = wp("post", "list", "--meta_key=_memlog_idem", f"--meta_value={payload.idem_key}", "--fields=ID", "--format=json")
         if existing:
-            import json
             posts = json.loads(existing)
-            post_id = int(posts[0]["ID"]) if posts else None
-        else:
-            post_id = None
-    except (json.JSONDecodeError, IndexError):
-        post_id = None
-    else:
+            if posts:
+                post_id = int(posts[0]["ID"])
+    except (json.JSONDecodeError, IndexError, KeyError, ValueError):
         post_id = None
 
     # Create new post if needed

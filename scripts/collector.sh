@@ -11,7 +11,7 @@ INTERVAL="${COLLECTOR_INTERVAL:-21600}"  # default 6 hours
 run_collector() {
     AGENT="$1"
     echo "[$(date)] Collecting sessions from: $AGENT"
-    "$PROJECT_DIR/.venv/bin/python3" "$PROJECT_DIR/src/collector_cli.py" --config "$CONFIG" collect "$AGENT" --dry-run 2>&1
+    "$PROJECT_DIR/.venv/bin/python3" "$PROJECT_DIR/src/collector_cli.py" --config "$CONFIG" collect "$AGENT" 2>&1
 }
 
 daemon_mode() {

@@ -115,66 +115,6 @@ def collect_agent(
         print(f"Collected {collected} new sessions")
     return 0
 
-    adapter_class = ADAPTERS.get(agent_name)
-    if not adapter_class:
-        print(f"No adapter for {agent_name}")
-        return 1
-
-    adapter = adapter_class(agent_cfg.session_dir)
-    sessions = adapter.get_sessions()
-
-    print(f"[{agent_name}] Found {len(sessions)} sessions in {agent_cfg.session_dir}")
-
-    # Initialize clients if not dry_run
-    wp_client = None
-    meili_client = None
-    if not dry_run:
-        wp_url = os.getenv("WP_MEMLOG_WP_URL", "http://127.0.0.1:8080")
-        wp_user = os.getenv("WP_MEMLOG_WP_USER", "memlog_writer")
-        wp_apppw = os.getenv("WP_MEMLOG_WP_APPPW")
-        meili_url = os.getenv("WP_MEMLOG_MEILI_URL", "http://127.0.0.1:7700")
-        meili_key = os.getenv("WP_MEMLOG_MEILI_KEY")
-
-        if not wp_apppw:
-            print("ERROR: WP_MEMLOG_WP_APPPW not set")
-            return 1
-        if not meili_key:
-            print("ERROR: WP_MEMLOG_MEILI_KEY not set")
-            return 1
-
-        wp_client = WpClient(wp_url, wp_user, wp_apppw)
-        meili_client = MeiliSearchClient(meili_url, meili_key)
-
-    collected = 0
-    for session in sessions:
-        if dry_run:
-            print(f"  - {session.id}: {session.path}")
-        else:
-            try:
-                payload = parse_session_to_payload(session, agent_name)
-                if payload:
-                    post_id = wp_client.create_post(
-                        title=payload.title,
-                        content=payload.content,
-                        status="private",
-                        meta={"_memlog_idem": payload.idem_key}
-                    )
-                    meili_client.index_document(
-                        post_id=post_id,
-                        title=payload.title,
-                        content=payload.content,
-                        categories=[payload.category],
-                        enriched=False,
-                    )
-                    print(f"  - {session.id}: posted as {post_id}")
-                    collected += 1
-            except Exception as e:
-                print(f"  - {session.id}: ERROR - {e}")
-
-    if not dry_run:
-        print(f"Collected {collected} new sessions")
-    return 0
-
 
 def parse_session_to_payload(session: SessionFile, agent_name: str) -> SessionPayload | None:
     """Parse md session file into SessionPayload"""

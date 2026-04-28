@@ -10,7 +10,8 @@ function memlog_do_setup() {
     
     // Create reader user if needed
     if (!username_exists('memlog-reader')) {
-        $user_id = wp_create_user('memlog-reader', 'reader123', 'reader@example.com');
+        $random_pass = wp_generate_password(20, true, true);
+        $user_id = wp_create_user('memlog-reader', $random_pass, 'reader@example.com');
         if (!is_wp_error($user_id)) {
             $user = new WP_User($user_id);
             $user->set_role('memlog_reader');
@@ -36,7 +37,6 @@ function memlog_do_setup() {
         ];
         
         update_user_meta($writer->ID, 'application_passwords', $app_passwords);
-        error_log("MEMLOG WRITER APP PASSWORD: $password");
     }
     
     // Get reader user
@@ -58,7 +58,6 @@ function memlog_do_setup() {
         ];
         
         update_user_meta($reader->ID, 'application_passwords', $app_passwords);
-        error_log("MEMLOG READER APP PASSWORD: $password");
     }
 }
 
