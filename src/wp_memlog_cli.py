@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""wp-memlog CLI - 에이전트 세션 저장 + 검색"""
+"""wp-memlog CLI - Agent session storage + search"""
 
 import argparse
 import os
@@ -38,13 +38,13 @@ def post_session(
     title: str = "",
     use_embedder: bool = False,
 ):
-    """세션을 WordPress에 저장하고 Meilisearch에 색인."""
+    """Save session to WordPress and index to Meilisearch."""
     # Create payload
     payload = SessionPayload(
         agent=agent,
         date=date,
         content=content,
-        title=title or f"[{agent}] {date} 세션",
+        title=title or f"[{agent}] {date} Session",
     )
 
 # Check for existing post with same idem_key
@@ -110,7 +110,7 @@ def search_sessions(
     limit: int = 5,
     hybrid: float = None,
 ):
-    """세션 검색."""
+    """Session search."""
     cli = MeiliSearchClient(meili_url, meili_key)
 
     if hybrid:

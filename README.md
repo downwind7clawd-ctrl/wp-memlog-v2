@@ -1,34 +1,34 @@
-# wp-memlog — 에이전트 무한 기억력 시스템
+# wp-memlog — Agent Infinite Memory System
 
-> 에이전트의 세션 대화를 WordPress에 자동 저장하고 의미 기반으로 검색
+> Automatically store agent session conversations in WordPress and search by semantic meaning.
 
-## 시작하기
+## Getting Started
 
-### 필요 환경
+### Requirements
 - Docker + Docker Compose
 - Python 3.10+
-- OpenRouter API Key (선택)
+- OpenRouter API Key (optional)
 
-### 1. Docker 실행
+### 1. Run Docker
 
 ```bash
 cd /home/david/nas_1tb/dev/wp-memlog
 docker compose up -d
 ```
 
-### 2. 접근 URL
+### 2. Access URLs
 - WordPress: http://127.0.0.1:8080
 - Meilisearch: http://127.0.0.1:7700
 
-### 3. 환경 변수 설정
+### 3. Set Environment Variables
 
-`.env` 파일 생성:
+Create `.env` file:
 ```bash
 cp .env.example .env
-# 편집: OPENROUTER_API_KEY 등 설정
+# Edit: Set OPENROUTER_API_KEY, etc.
 ```
 
-### 4. Python 패키지 설치
+### 4. Install Python Package
 
 ```bash
 .venv/bin/pip install -e .
@@ -36,97 +36,97 @@ cp .env.example .env
 
 ---
 
-## 사용법
+## Usage
 
-### 세션 포스팅
+### Post Session
 
 ```bash
-# WordPress에 세션 저장
+# Save session to WordPress
 .venv/bin/python src/wp_memlog_cli.py post \
   --agent macguffin \
   --date "2026-04-28" \
-  --content "대화 내용" \
-  --title "세션 제목"
+  --content "Conversation content" \
+  --title "Session title"
 ```
 
-### 검색
+### Search
 
 ```bash
-# Meilisearch 검색
-.venv/bin/python src/wp_memlog_cli.py search "검색어" --limit 5
-.venv/bin/python src/wp_memlog_cli.py search "검색어" --category hermes
+# Meilisearch search
+.venv/bin/python src/wp_memlog_cli.py search "search query" --limit 5
+.venv/bin/python src/wp_memlog_cli.py search "search query" --category hermes
 ```
 
-### Collector 실행
+### Run Collector
 
 ```bash
-# 수동 실행
+# Manual run
 .venv/bin/python src/collector_cli.py --config config/agents.yaml collect hermes
 
-# dry-run (테스트)
+# dry-run (test)
 .venv/bin/python src/collector_cli.py --config config/agents.yaml collect hermes --dry-run
 ```
 
-### Cron 자동화 (6시간마다)
+### Cron Automation (every 6 hours)
 
 ```bash
 crontab -e
-# 추가:
+# Add:
 0 */6 * * * /home/david/nas_1tb/dev/wp-memlog/scripts/collector.sh --run hermes >> /var/log/wp-memlog-collector.log 2>&1
 ```
 
 ---
 
-## OpenRouter 요약 사용
+## Using OpenRouter Summarization
 
 ```python
 from wp_memlog import generate_excerpt_sync
 
-excerpt = generate_excerpt_sync("요약할 내용")
+excerpt = generate_excerpt_sync("Content to summarize")
 ```
 
 ---
 
-## 문제 해결
+## Troubleshooting
 
-### Application Passwords 오류
-현재 admin/password로 동작합니다. Application Passwords는 WordPress 6.7에서 설정이 복잡합니다.
+### Application Passwords Error
+Currently works with admin/password. Application Passwords setup is complex in WordPress 6.7.
 
-### ClassifAI 미작동
-Python에서 직접 OpenRouter를 사용합니다 (`src/wp_memlog/enrichment.py`).
+### ClassifAI Not Working
+Use OpenRouter directly from Python (`src/wp_memlog/enrichment.py`) instead.
 
 ---
 
-## 아키텍처
+## Architecture
 
 ```
-에이전트 → WP REST API → WordPress (저장)
-         → Meilisearch (색인)
-         → OpenRouter (요약, Python에서 직접)
+Agent → WP REST API → WordPress (storage)
+         → Meilisearch (indexing)
+         → OpenRouter (summarization, direct from Python)
 ```
 
 ---
 
-## 개선 과제
+## Improvement Tasks
 
-- I1: ClassifAI → Python 완전 대체
-- I2: WP save_post 훅 자동 요약
+- I1: Replace ClassifAI → Python completely
+- I2: WP save_post hook automatic summarization
 
 ---
 
-## 파일 구조
+## File Structure
 
 ```
 wp-memlog/
 ├── src/
-│   ├── wp_memlog/          # Python 패키지
+│   ├── wp_memlog/          # Python package
 │   ├── collector_cli.py    # Collector CLI
 │   └── wp_memlog_cli.py  # Main CLI
 ├── scripts/
-│   ├── collector.sh     # Collector 데몬
-│   ├── backup.sh       # 백업
-│   └── monitor.sh     # 모니터링
+│   ├── collector.sh     # Collector daemon
+│   ├── backup.sh       # Backup
+│   └── monitor.sh     # Monitoring
 ├── config/
-│   └── agents.yaml   # 에이전트 설정
-└── .env           # 환경 변수
+│   └── agents.yaml   # Agent configuration
+└── .env           # Environment variables
 ```

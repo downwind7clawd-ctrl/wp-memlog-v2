@@ -1,233 +1,233 @@
-# wp-memlog — 에이전트 무한 기억력 시스템
+# wp-memlog — Agent Infinite Memory System
 
-> **상태:** 구현 완료 v4.0 (Phase 1-2 완)
-> **생성:** 2026-04-24
-> **갱신:** 2026-04-27 (구현 완료)
+> **Status:** Implementation Complete v4.0 (Phase 1-2 Complete)
+> **Created:** 2026-04-24
+> **Updated:** 2026-04-27 (Implementation Complete)
 
 
 ---
 
-## 1. 목표 (Goal)
+## 1. Goal
 
-### 우리가 만들 것
+### What we're building
 
-**에이전트(Hermes, OpenCode 등)의 세션 대화 전문을 WordPress에 영구 저장하고, 과거 맥락이 필요할 때 의미 기반 검색으로 요약본만 반환받는 시스템.**
+**A system that permanently stores agent (Hermes, OpenCode, etc.) session transcripts in WordPress, and returns summarized excerpts on demand via semantic search when past context is needed.**
 
-### 왜 필요한가
+### Why needed
 
-| 현재 문제 | 해결 |
+| Current Problem | Solution |
 |---|---|
-| 세션 종료 시 대화 내용 소멸 | 전문을 영구 저장 |
-| `session_search`는 요약만, 원문 없음 | **전문 + 요약 모두 보존** |
-| 3년 사용 시 ~7,500세션 누적 → 검색 폭발 | 플러그인이 검색→요약→상위 N개만 반환 |
-| 데일리로그는 수동/요약 수준 | 자동 전문 저장 + 자동 증류 |
-| hindsight는 구조화 메모리, 대화 전문 불가 | **전문 전용 저장소** (hindsight와 보완 관계) |
+| Conversations lost when session ends | Store transcripts permanently |
+| `session_search` returns only summary, no full text | **Preserve both transcript + summary** |
+| 3 years = ~7,500 sessions → search explosion | Plugin searches→summarizes→returns top N |
+| Daily logs are manual/summary level | Auto transcript storage + auto enrichment |
+| hindsight is structured memory, not conversation transcript | **Transcript-only storage** (complementary with hindsight) |
 
-### 핵심 원리
+### Core Principle
 
-> **전문 저장 → 플러그인이 사전 증류 → 에이전트는 증류본만 소비**
+> **Transcript storage → Plugin pre-enriches → Agent consumes only the enrichment**
 
-에이전트가 직접 전문을 읽지 않음. WP 플러그인이 글 저장 시 자동으로 색인/요약/임베딩을 생성하고, 검색 시 증류된 정보만 반환.
+Agent doesn't read transcripts directly. WP plugin automatically indexes/summarizes/embeds on post save, returns only enriched info on search.
 
-> v3.3 아키텍처 변경: WP 플러그인(Meilisearch for WP)의 자동 색인은 **비활성화**하고 Python 패키지가 Meilisearch에 단독으로 색인 관리. ClassifAI는 비동기로 동작하여 저장/검색에 장애 영향 없음.
+> v3.3 Architecture Change: **Disabled** Meilisearch for WP automatic indexing. Python package manages Meilisearch indexing independently. ClassifAI runs async, doesn't affect save/search.
 
 ---
 
-## 2. 정의 (Definition)
+## 2. Definition
 
-### 시스템 아키텍처
+### System Architecture
 
 ```
 ┌──────────────────────┐
-│ 에이전트 (Hermes,     │
+│ Agent (Hermes,       │
 │ OpenCode, GeminiCLI) │
-│                      │  ① 세션 종료 시 전문 REST API POST
+│                      │  ① Session end → transcript REST API POST
 └──────────┬───────────┘
-           │
-           ▼
+            │
+            ▼
 ┌──────────────────────────────────────────────────────┐
 │  WordPress (Docker Local)                             │
 │                                                      │
 │  ┌─────────────────────────────────────────────────┐ │
-│  │  비공개 글 (전문 저장)                           │ │
-│  │  [데우스] 2026-04-26 세션 — wp-memlog 논의      │ │
-│  │  맥거핀/휴브리스 각각 카테고리 분리               │ │
-│  │  meta: _memlog_idem (UUID), _classifai_status   │ │
+│  │  Private posts (transcript storage)            │ │
+│  │  [deus] 2026-04-26 Session — wp-memlog      │ │
+│  │  macguffin/hubris in separate categories      │ │
+│  │  meta: _memlog_idem (UUID), _classifai_status│ │
 │  └─────────────────────┬───────────────────────────┘ │
 │                        │                              │
-│                        ▼ WP save_post 훅 (비동기)     │
+│                        ▼ WP save_post hook (async)     │
 │  ┌─────────────────────────────────────────────────┐ │
-│  │  ClassifAI (증류 플러그인, 비동기)                │ │
-│  │  ② 자동 요약 생성 (excerpt)                     │ │
-│  │  ③ 자동 태깅 / 카테고리 분류                    │ │
-│  │  ④ OpenAI Embeddings 생성 + 메타에 저장         │ │
-│  │  완료 시 → Meilisearch excerpt 업데이트          │ │
+│  │  ClassifAI (enrichment plugin, async)           │ │
+│  │  ② Auto summary (excerpt)                   │ │
+│  │  ③ Auto tagging / category classification   │ │
+│  │  ④ OpenAI Embeddings generated + stored   │ │
+│  │  On complete → Meilisearch excerpt update │ │
 │  └─────────────────────────────────────────────────┘ │
 │                        │                              │
-│                        ▼ Python 패키지가 직접 색인    │
+│                        ▼ Python package indexes directly  │
 │  ┌─────────────────────────────────────────────────┐ │
-│  │  Meilisearch (검색 엔진)                        │ │
-│  │  ⑤ 전문 + 요약 하이브리드 인덱스                 │ │
-│  │  ⑥ REST API :7700 (에이전트 직접 호출)         │ │
-│  │     POST /indexes/wp_posts/search               │ │
-│  │  v3.3: WP 플러그인 색인 비활성화, Python 단독   │ │
+│  │  Meilisearch (search engine)                  │ │
+│  │  ⑤ Transcript + summary hybrid index         │ │
+│  │  ⑥ REST API :7700 (agent direct call)       │ │
+│  │     POST /indexes/wp_posts/search           │ │
+│  │  v3.3: WP plugin disabled, Python only   │ │
 │  └─────────────────────┬───────────────────────────┘ │
 │                        │                              │
 │  ┌─────────────────────┴───────────────────────────┐ │
-│  │  WordPress MCP (Automattic 공식, 선택)          │ │
-│  │  ⑦ MCP 프로토콜로 CRUD 노출                    │ │
+│  │  WordPress MCP (Automattic, optional)        │ │
+│  │  ⑦ MCP protocol CRUD exposure             │ │
 │  └─────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────┘
-           │
-           ▼ ⑧ 검색 → 요약본 + 메타데이터 반환
+            │
+            ▼ ⑧ Search → summary + metadata returned
 ┌──────────────────────┐
-│ 에이전트               │
-│ "3년 전에 논의한 내용"  │  → Meilisearch 검색 → 상위 5개 (~1000토큰)
+│ Agent               │
+│ "Find what we discussed 3 years ago" → Meilisearch → top 5 (~1000 tokens)
 └──────────────────────┘
 ```
 
-### 파이프라인 흐름 (v3.3: 이벤트 드리븐)
+### Pipeline Flow (v3.3: Event-driven)
 
 ```
-POST → WP 저장 (항상 성공) → 즉시 응답
-         ↓
-         WP save_post 훅 발화
-         ├→ Meilisearch 직접 색인 (즉시, excerpt=null)
-         └→ ClassifAI 비동기 (백그라운드)
-              완료 시:
-              ↓
-              WP 메타 업데이트 (excerpt)
-              └→ Meilisearch 문서 업데이트 (excerpt 추가)
+POST → WP save (always succeeds) → Immediate response
+          ↓
+          WP save_post hook fires
+          ├→ Meilisearch direct index (immediate, excerpt=null)
+          └→ ClassifAI async (background)
+               On complete:
+               ↓
+               WP meta update (excerpt)
+               └→ Meilisearch document update (excerpt added)
 ```
 
-> v3.3 핵심: ClassifAI 장애가 저장/검색에 영향을 주지 않는다. 저장은 항상 성공하고, 검색은 excerpt 유무와 무관하게 동작한다.
+> v3.3 Key: ClassifAI failure doesn't affect save/search. Save always succeeds, search works regardless of excerpt presence.
 
-### 플러그인 선정 (확정)
+### Plugin Selection (Final)
 
-| 역할 | 플러그인 | 선정 이유 |
+| Role | Plugin | Reason |
 |---|---|---|
-| **검색/색인** | **Meilisearch for WP** | 하이브리드(키워드+시맨틱) 검색, REST API :7700 에이전트 직접 호출, 단일 바이너리 Docker 배포 간단. **v3.3: 자동 색인은 비활성화, Python 패키지가 단독 관리** |
-| **AI 증류** | **ClassifAI** (10up) | publish 시 자동 요약+태깅+임베딩 생성. **v3.4: 멀티 프로바이더 지원 확인 (OpenAI, xAI/Grok, Together AI, Google AI, Ollama, Azure, AWS Bedrock). OpenAI provider는 `classifai_openai_api_request_post_url` 필터로 URL 오버라이드 가능 → OpenRouter도 사용 가능.** **v3.3: 비동기 처리. 실패해도 저장/검색에 영향 없음** |
-| **임베딩 (검색용)** | **bge-m3** (HuggingFace, 로컬) | Meilisearch 시맨틱 검색용. CPU에서 동작, 비용 $0. 다국어 지원 (한국어 포함) |
-| **MCP 브릿지** | **WordPress MCP** (Automattic, 선택) | WP 기능을 MCP 프로토콜로 노출. Phase 3 이후 검토 |
+| **Search/Index** | **Meilisearch for WP** | Hybrid(keyword+semantic) search, REST API :7700 direct call, single binary Docker deploy. **v3.3: Auto-index disabled, Python package manages alone** |
+| **AI Enrichment** | **ClassifAI** (10up) | Auto summary+tagging+embedding on publish. **v3.4: Multi-provider confirmed (OpenAI, xAI/Grok, Together AI, Google AI, Ollama, Azure, AWS Bedrock). OpenAI provider can override URL via `classifai_openai_api_request_post_url` filter → OpenRouter available.** **v3.3: Async processing. Failure doesn't affect save/search** |
+| **Embedding (search)** | **bge-m3** (HuggingFace, local) | For Meilisearch semantic search. Runs on CPU, $0 cost. Multi-language (Korean included) |
+| **MCP Bridge** | **WordPress MCP** (Automattic, optional) | Expose WP features via MCP protocol. Review after Phase 3 |
 
-**대안 검토 완료:** ElasticPress(ES 리소스 과다), Relevanssi(시맨틱 검색 불가), WP Vector Search(미숙), WP Semantic Search(미숙), Ghost(플러그인 열위), Notion(rate limit), GitHub Issues(65K자 제한), Supabase(500MB 제한)
+**Alternatives reviewed and rejected:** ElasticPress(ES too heavy), Relevanssi(no semantic), WP Vector Search(immature), WP Semantic Search(immature), Ghost(plugin inferior), Notion(rate limit), GitHub Issues(65K char limit), Supabase(500MB limit)
 
-### 에이전트별 카테고리
+### Agent Categories
 
-| 에이전트 | 카테고리 slug | 설명 |
+| Agent | Category Slug | Description |
 |---|---|---|
-| 데우스 (Hermes) | `deus` | AI 비서 세션 |
-| 맥거핀 (OpenCode) | `macguffin` | 코딩 에이전트 세션 |
-| 휴브리스 (GeminiCLI) | `hubris` | Gemini CLI 에이전트 세션 |
+| 데우스 (Hermes) | `deus` | AI assistant sessions |
+| 맥거핀 (OpenCode) | `macguffin` | Coding agent sessions |
+| 휴브리스 (GeminiCLI) | `hubris` | Gemini CLI agent sessions |
 
-### 세션 수집 전략
+### Session Collection Strategy
 
-| 에이전트 타입 | 수집 방식 | 적용 대상 |
+| Agent Type | Collection Method | Target |
 |---|---|---|
-| **종료형** (세션 킬 방식) | 세션 종료 훅 → 전문 즉시 POST | 데우스 (Hermes), 맥거핀 (OpenCode) |
-| **상시형** (Kill 안 됨) | Cron 증분 수집 (last checkpoint 기반) | 휴브리스 (GeminiCLI) |
+| **Exit-type** (session kill) | Session end hook → transcript immediate POST | 데우스 (Hermes), 맥거핀 (OpenCode) |
+| **Always-on** (no kill) | Cron incremental (last checkpoint) | 휴브리스 (GeminiCLI) |
 
-### 데이터 형식
+### Data Format
 
-**글 제목:** `[데우스] 2026-04-26 세션 — wp-memlog 기획서 재작성`
-**글 내용:** 대화 전문 (그대로 저장)
-**글 상태:** `private` (관리자 로그인 후에만 접근 가능)
-**요약:** ClassifAI가 자동 생성한 excerpt (비동기, 완료 시 업데이트)
-**태그:** ClassifAI가 자동 생성 (주제 기반)
-**임베딩:** ClassifAI가 OpenAI Embeddings로 생성 (증류용)
-**시맨틱 검색:** Meilisearch + bge-m3 로컬 embedder (검색용, API 비용 $0)
-**멱등성 키:** `_memlog_idem` custom field (UUID v4, 세션 시작 시 생성)
+**Post Title:** `[deus] 2026-04-26 Session — wp-memlog planning rewrite`
+**Post Content:** Full transcript (stored as-is)
+**Post Status:** `private` (accessible only after admin login)
+**Summary:** Auto-generated excerpt by ClassifAI (async, updated on completion)
+**Tags:** Auto-generated by ClassifAI (topic-based)
+**Embeddings:** Created by ClassifAI OpenAI Embeddings (for enrichment)
+**Semantic Search:** Meilisearch + bge-m3 local embedder (for search, $0 API cost)
+**Idempotency Key:** `_memlog_idem` custom field (UUID v4, created at session start)
 
-> ℹ️ **ClassifAI `private` 상태 처리 (v3.1 정정):** ClassifAI v2.2.2+에서는 UI 설정(`ClassifAI > Language Processing > Settings`)에서 **자동 처리할 `post_status`를 체크박스로 직접 선택** 가능합니다. 기본값은 `publish`만 체크되어 있으므로, **`private`을 체크하면 즉시 동작**합니다 (코드 수정 불필요). 필터 훅 `classifai_post_statuses_for_post_type_or_id`로도 프로그램적 제어 가능. Phase 1에서 설정 화면에 `private` 옵션 존재 여부만 확인하면 됩니다.
->
-> 만약 UI에 해당 옵션이 없을 경우 (구형 버전 등) 대안:
-> - A) REST API 수동 트리거: `GET /classifai/v1/generate-excerpt/{post_id}`
-> - B) `classifai_should_classify_post` 필터로 커스텀 훅 작성
+> ℹ️ **ClassifAI `private` status handling (v3.1 fix):** In ClassifAI v2.2.2+, you can **directly check the `post_status` checkbox** in UI settings (`ClassifAI > Language Processing > Settings`). Default only `publish` is checked, so **checking `private` makes it work immediately** (no code change needed). Also programmable via `classifai_post_statuses_for_post_type_or_id` hook. Phase 1: verify `private` option exists in settings UI.
+
+> If that option doesn't exist (older version), alternatives:
+> - A) REST API manual trigger: `GET /classifai/v1/generate-excerpt/{post_id}`
+> - B) Custom hook via `classifai_should_classify_post` filter
 > - C) WP-CLI: `wp classifai classify {post_id}`
 
-### 토큰 효율
+### Token Efficiency
 
-| 시나리오 | 에이전트가 받는 토큰 |
+| Scenario | Tokens Agent Receives |
 |---|---|
-| "지난번에 내가 말한 '아이디어' 찾아줘" (3년치 7,500세션) | 상위 5개 요약 × ~200토큰 = **~1,000토큰** |
-| read_file로 데일리로그 30일치 전체 읽기 | 수만 토큰 (비효율) |
+| "Find the 'idea' I mentioned last time" (3 years, 7,500 sessions) | Top 5 summaries × ~200 tokens = **~1,000 tokens** |
+| Read full 30-day daily logs via read_file | Thousands of tokens (inefficient) |
 
 ---
 
-## 3. 리스크 분석 (v3.3)
+## 3. Risk Analysis (v3.3)
 
-### 🔴 Critical — Phase 1에서 해결
+### 🔴 Critical — Resolve in Phase 1
 
-| # | 리스크 | 상세 | 대응 |
+| # | Risk | Details | Mitigation |
 |---|--------|------|------|
-| C1 | **Meilisearch for WP가 `private` 글 색인하지 않음** | WP 검색 플러그인 대부분은 `publish`만 색인 | **v3.3: WP 플러그인 색인 비활성화. Python 패키지가 단독으로 private 글 색인 관리** |
-| C2 | **ClassifAI 장애 시 검색 불가** | OpenAI API 장애/레이트리밋 시 증류 실패 | **v3.3: 이벤트 드리븐 분리. 저장은 항상 성공. 검색은 excerpt 없이도 동작** |
-| C3 | **bge-m3 모델 다운로드 실패** | 네트워크 불안정 시 partial download → corrupted model | HF 캐시 볼륨 명시적 마운트(`hf_cache`). Docker 볼륨에 캐시 유지 |
-| C4 | **MariaDB utf8 기본값** (v3.3 신규) | 기본 utf8은 3바이트 → 이모지(4바이트) 저장 실패 | `utf8mb4` + `utf8mb4_unicode_ci` 명시적 설정 |
-| C5 | **`read_private_posts` 권한 누락** (v3.3 신규) | 기본 `read` 캐퍼빌리티로는 private 글 조회 불가 | 커스텀 WP 역할에 `read_private_posts` 명시적 부여 |
+| C1 | **Meilisearch for WP doesn't index `private` posts** | Most WP search plugins only index `publish` | **v3.3: WP plugin disabled. Python package indexes private posts alone** |
+| C2 | **Search fails when ClassifAI fails** | API outage/rate limit → enrichment fails | **v3.3: Event-driven separation. Save always succeeds. Search works without excerpt** |
+| C3 | **bge-m3 model download fails** | Network instability → partial download → corrupted model | HF cache volume explicit mount(`hf_cache`). Cache persists in Docker volume |
+| C4 | **MariaDB utf8 default** (v3.3 new) | Default utf8 is 3-byte → emoji (4-byte) save fails | `utf8mb4` + `utf8mb4_unicode_ci` explicit |
+| C5 | **`read_private_posts` permission missing** (v3.3 new) | Default `read` capability can't read private posts | Custom WP role gets `read_private_posts` explicitly |
 
-### 🟠 High — Phase 2 착수 전 해결
+### 🟠 High — Resolve Before Phase 2 Start
 
-| # | 리스크 | 상세 | 대응 |
+| # | Risk | Details | Mitigation |
 |---|--------|------|------|
-| H1 | **멱등성 키 중복** (v3.3 수정) | content 기반 키는 타임스탬프 변경 시 중복 | **UUID 기반 외부 주입** (세션 시작 시 생성, 종료까지 유지) |
-| H2 | **대용량 세션 처리** | 단일 세션 6K토큰 초과 시 ClassifAI 한도 초과 | `tiktoken` 정확 카운트 + 문장 기준 청킹 |
-| H3 | **Meilisearch 메모리 과다** | bge-m3 로드 시 ~2.2GB + 추론 + 인덱스 | 6G 리소스 리미트 + 모니터링 스크립트 |
-| H4 | **WP REST API meta 쿼리 비활성화** | custom field 검색이 기본 비활성화 | WP-CLI로 대체 (`docker exec wp post list --meta_key=...`) |
-| H5 | **Meilisearch uid 충돌** | WP 플러그인과 Python 패키지 동시 색인 시 중복 문서 | **v3.3: WP 플러그인 비활성화 후 Python 단독 관리. uid `str(post_id)` 형식** |
-| H6 | **볼륨 데이터 소실** | `docker compose down -v`로 볼륨 삭제 | `safe-compose.sh` 래퍼 + 볼륨 레이블 보호 + 일간 백업 |
+| H1 | **Idempotency key duplication** (v3.3 fix) | Content-based key duplicates on timestamp change | **UUID-based external injection** (created at session start, kept until end) |
+| H2 | **Large session handling** | Single session >6K tokens → ClassifAI limit exceeded | `tiktoken` accurate count + sentence-based chunking |
+| H3 | **Meilisearch excessive memory** | bge-m3 load ~2.2GB + inference + index | 6GB resource limit + monitoring script |
+| H4 | **WP REST API meta query disabled** | Custom field search disabled by default | Alternative via WP-CLI (`docker exec wp post list --meta_key=...`) |
+| H5 | **Meilisearch uid collision** | WP plugin + Python package both index → duplicate | **v3.3: WP plugin disabled, Python manages alone. uid `str(post_id)` format** |
+| H6 | **Volume data loss** | `docker compose down -v` deletes volumes | `safe-compose.sh` wrapper + volume label protection + daily backup |
 
-### 🟡 Medium — 운영 단계에서 관리
+### 🟡 Medium — Manage During Operations
 
-| # | 리스크 | 상세 | 대응 |
+| # | Risk | Details | Mitigation |
 |---|--------|------|------|
-| M1 | **Meilisearch 인덱스 크기 증가** | 7,500세션 × 6K토큰 → ~90MB+ 임베딩 | `monitor.sh` 1분 주기 모니터링 + 임계치 초과 시 알림 |
-| M2 | **ClassifAI 플러그인 EOL** | WP 메이저 버전 업데이트 시 호환성 깨질 가능성 | WP 업데이트 전 ClassifAI 호환성 체크 |
-| M3 | **WP REST API 페이지네이션 제한** (v3.3 신규) | 기본 per_page=100. 백필 7,500세션 = 75페이지 | 대량 백필은 WP-CLI 직접 사용 |
-| M4 | **볼륨 보호 맹점** (v3.3 신규) | `safe-compose.sh`는 `down -v`만 막음. `docker volume rm`은 못 막음 | 볼륨 레이블 추가(참고용). 진짜 보호는 백업 신뢰성 + 접근 제어 |
+| M1 | **Meilisearch index size growth** | 7,500 sessions × 6K tokens → ~90MB+ embedding | `monitor.sh` 1-min monitoring + alert on threshold |
+| M2 | **ClassifAI plugin EOL** | May break on WP major version update | Check ClassifAI compatibility before WP update |
+| M3 | **WP REST API pagination limit** (v3.3 new) | Default per_page=100. 7,500 sessions = 75 pages | Bulk fetch via WP-CLI directly |
+| M4 | **Volume protection blind spot** (v3.3 new) | `safe-compose.sh` only prevents `down -v`. Can't prevent `docker volume rm` | Volume label added (reference only). Real protection: backup reliability + access control |
 
-### 검증 항목 체크리스트
+### Verification Checklist
 
 **Phase 1 (V1~V7):**
-| # | 항목 | 검증 방법 |
+| # | Item | Verification Method |
 |---|------|----------|
-| V1 | ClassifAI private 글 자동 처리 | private 글 저장 → ClassifAI 요약/태깅 동작 확인 |
-| V2 | Meilisearch private 글 색인 | Python 패키지로 private 글 색인 → Meilisearch 검색 확인 |
-| V3 | 시맨틱 검색 품질 | 한국어 쿼리 10개로 bge-m3 검색 정확도 테스트 |
-| V4 | Meilisearch 메모리 안정성 | 6G 리미트에서 24시간 연속 운영 후 메모리 안정 확인 |
-| V5 | ClassifAI 실패 시 폴백 | OpenAI API 장애 시뮬 → 글 저장은 성공, excerpt만 null |
-| V6 | 백업/복원 정상 동작 | 백업 후 볼륨 삭제 → 복원 → 데이터 완전성 확인 |
-| V7 | Application Passwords 인증 | writer/reader 각각 REST API POST/GET 성공 |
+| V1 | ClassifAI private post auto-processing | Save private post → ClassifAI summarize/tag runs |
+| V2 | Meilisearch private post indexing | Index private post via Python → Meilisearch search works |
+| V3 | Semantic search quality | Test bge-m3 search accuracy with 10 Korean queries |
+| V4 | Meilisearch memory stability | Run 24 hours on 6GB limit → memory stable |
+| V5 | ClassifAI failure fallback | Simulate OpenAI API failure → save succeeds, excerpt only null |
+| V6 | Backup/restore works correctly | Delete volume after backup → restore → data integrity |
+| V7 | Application Passwords authentication | Writer/reader REST API POST/GET succeed |
 
 **Phase 2 (V8~V11):**
-| # | 항목 | 검증 방법 |
+| # | Item | Verification Method |
 |---|------|----------|
-| V8 | 멱등성 키 정상 동작 | 동일 UUID로 재POST → 409 또는 기존 글 업데이트 |
-| V9 | 청킹 품질 | 10K토큰 세션 → 청킹 후 각 부분 ClassifAI 증류 확인 |
-| V10 | 검색 결과 품질 | 실제 과거 세션 10개 쿼리 → 관련도 상위 5개 적중률 80%+ |
-| V11 | 에러 복구 | WP 다운/Meilisearch 다운 시뮬 → 자동 복구 후 재시도 성공 |
+| V8 | Idempotency key works correctly | Same UUID re-POST → 409 or existing post update |
+| V9 | Chunking quality | 10K token session → chunk → each part ClassifAI enriched |
+| V10 | Search result quality | Query 10 past sessions → top 5 relevance 80%+ |
+| V11 | Error recovery | Simulate WP down/Meilisearch down → auto-recover → retry success |
 
 ---
 
-## 4. 진행 방향 (Roadmap)
+## 4. Roadmap
 
-> **v3.3 실행 원칙:**
-> - ❌ Phase 1과 Phase 2를 동시에 진행하지 마라. V1~V7 통과 전에 Python 코드를 쓰기 시작하면 검증 기준이 흔들린다.
-> - ❌ WP 플러그인 색인과 직접 색인을 동시에 실행하지 마라. 어느 쪽이 진실인지 모르는 상태가 됨. 하나를 선택하고 나머지 비활성화.
-> - ❌ docker-compose.yml에 시크릿을 하드코딩하지 마라. .env가 있어도 실수로 커밋됨.
-> - ✅ 가장 먼저 할 일: `docker compose up -d` → 3개 컨테이너 헬스체크 통과 → Phase 1a 완료.
+> **v3.3 Execution Principles:**
+> - ❌ Don't run Phase 1 and Phase 2 simultaneously. Writing Python code before passing V1~V7 shakes validation baseline.
+> - ❌ Don't run WP plugin index and direct index simultaneously. Don't know truth. Pick one and disable other.
+> - ❌ Don't hardcode secrets in docker-compose.yml. Even with .env, accidentally committed.
+> - ✅ First task: `docker compose up -d` → 3 container healthcheck pass → Phase 1a complete.
 
-### Phase 1: WordPress Docker 로컬 구축 (v3.3: 4단계 분할)
+### Phase 1: WordPress Docker Local Setup (v3.3: 4-step split)
 
-**목표:** WP + Meilisearch + ClassifAI가 동작하는 로컬 환경
+**Goal:** Local environment with WP + Meilisearch + ClassifAI working
 
-> v3.3: V1~V7을 한 Phase에 묶으면 하나라도 실패 시 전체가 블로킹됨. 실제 구현 단계별로 분할.
+> v3.3: Grouping V1~V7 in one Phase blocks everything on one failure. Split by actual implementation steps.
 
-#### Phase 1a: Docker 환경 구축
-**검증:** 컨테이너 3개 헬스체크 통과
+#### Phase 1a: Docker Setup
+**Verification:** 3 containers pass healthcheck
 
-- [ ] Docker Compose 작성 (WordPress + MariaDB + Meilisearch)
+- [ ] Docker Compose (WordPress + MariaDB + Meilisearch)
   ```yaml
   services:
     meilisearch:
@@ -236,7 +236,7 @@ POST → WP 저장 (항상 성공) → 즉시 응답
       deploy:
         resources:
           limits:
-            memory: 6G           # v3.2: bge-m3 ~2.2GB + 추론 + 인덱스 안전 마진
+            memory: 6G           # v3.2: bge-m3 ~2.2GB + inference + index safety margin
           reservations:
             memory: 2G
       environment:
@@ -245,9 +245,9 @@ POST → WP 저장 (항상 성공) → 즉시 응답
         - MEILI_NO_ANALYTICS=true
       volumes:
         - meili_data:/meili_data
-        - hf_cache:/root/.cache/huggingface  # v3.3: bge-m3 모델 캐시 (재시작 시 재다운로드 방지)
+        - hf_cache:/root/.cache/huggingface  # v3.3: bge-m3 model cache (prevent re-download on restart)
       ports:
-        - "127.0.0.1:7700:7700"            # 로컬 접근만 (H3 대응)
+        - "127.0.0.1:7700:7700"            # Local access only (H3)
       healthcheck:                          # v3.2
         test: ["CMD", "wget", "--no-verbose", "--spider", "http://localhost:7700/health"]
         interval: 10s
@@ -288,9 +288,9 @@ POST → WP 저장 (항상 성공) → 즉시 응답
         - MYSQL_DATABASE=wp_memlog
         - MYSQL_USER=wp
         - MYSQL_PASSWORD=${WP_DB_PASSWORD}
-        - MYSQL_CHARSET=utf8mb4          # v3.3: 한국어 이모지 저장 필수
+        - MYSQL_CHARSET=utf8mb4          # v3.3: Required for Korean emoji
         - MYSQL_COLLATION=utf8mb4_unicode_ci
-      command: >                           # v3.3: 서버 레벨 utf8mb4 강제
+      command: >                           # v3.3: Force utf8mb4 at server level
         --character-set-server=utf8mb4
         --collation-server=utf8mb4_unicode_ci
         --innodb-buffer-pool-size=256M
@@ -305,27 +305,27 @@ POST → WP 저장 (항상 성공) → 즉시 응답
   volumes:
     meili_data:
       labels:
-        com.wp-memlog.protect: "true"       # v3.3: 볼륨 보호 레이블
+        com.wp-memlog.protect: "true"       # v3.3: Volume protection label
     wp_data:
       labels:
         com.wp-memlog.protect: "true"
     db_data:
       labels:
         com.wp-memlog.protect: "true"
-    hf_cache:                                # v3.3: HuggingFace 모델 캐시
+    hf_cache:                                # v3.3: HuggingFace model cache
   ```
-- [ ] `.env` 템플릿 작성
+- [ ] `.env` template
   ```bash
-  # .env (git에 커밋 금지)
+  # .env (NEVER commit to git)
   MEILI_MASTER_KEY=<random-32-char>
   MYSQL_ROOT_PASSWORD=<random-24-char>
   WP_DB_PASSWORD=<random-24-char>
-  COMPOSE_PROJECT_NAME=wp-memlog    # 명시적 프로젝트명 (백업/복원에 필요)
+  COMPOSE_PROJECT_NAME=wp-memlog    # Explicit project name (needed for backup/restore)
   ```
-- [ ] **`safe-compose.sh`** — `docker compose down -v` 방지 래퍼
+- [ ] **`safe-compose.sh`** — `docker compose down -v` prevention wrapper
   ```bash
   #!/bin/bash
-  # down -v 시 경고 + 확인 필요
+  # Warn + confirmation on -v
   if [[ "$1" == "down" && "$*" == *"-v"* ]]; then
       echo "⛔ WARNING: -v flag will DELETE all volumes!"
       echo "Run 'scripts/backup.sh' first if needed."
@@ -335,43 +335,42 @@ POST → WP 저장 (항상 성공) → 즉시 응답
   docker compose "$@"
   ```
 
-#### Phase 1b: 기본 연동
-**검증:** WP 관리자 로그인, REST API 응답, 카테고리 생성, 커스텀 역할 생성
+#### Phase 1b: Basic Integration
+**Verification:** WP admin login, REST API response, category creation, custom role creation
 
-- [ ] WordPress 설치 및 초기 설정 (비공개 사이트)
-- [ ] 카테고리 생성 (deus, macguffin, hubris)
-- [ ] **WP 커스텀 역할 2개 생성** (v3.3: 기본 역할로는 권한 제어 불가)
-  - `functions.php` 또는 커스텀 플러그인으로 역할 생성:
+- [ ] WordPress install and initial setup (private site)
+- [ ] Category creation (deus, macguffin, hubris)
+- [ ] **WP custom role creation** (v3.3: default roles can't control permissions)
+  - Create via `functions.php` or custom plugin:
     ```php
-    // Memlog Writer: 글 생성/수정/조회
+    // Memlog Writer: create/edit/read posts
     add_role('memlog_writer', 'Memlog Writer', [
         'read' => true,
         'edit_posts' => true,
         'publish_posts' => true,
-        'read_private_posts' => true,   // v3.3: private 글 조회 필수
+        'read_private_posts' => true,   // v3.3: required for private post read
         'edit_private_posts' => true,
-        'delete_posts' => false,        // 삭제 금지 (안전)
+        'delete_posts' => false,        // Disable delete (safety)
     ]);
-    // Memlog Reader: 조회 전용
+    // Memlog Reader: read-only
     add_role('memlog_reader', 'Memlog Reader', [
         'read' => true,
-        'read_private_posts' => true,   // v3.3: 이게 없으면 private 글을 못 읽음!
+        'read_private_posts' => true,   # v3.3: can't read private without this!
     ]);
     ```
-  - `memlog-writer` 계정 → Application Password → `WP_MEMLOG_POST_APPPW`
-  - `memlog-reader` 계정 → Application Password → `WP_MEMLOG_READ_APPPW`
+  - `memlog-writer` account → Application Password → `WP_MEMLOG_POST_APPPW`
+  - `memlog-reader` account → Application Password → `WP_MEMLOG_READ_APPPW`
 
-#### Phase 1c: ClassifAI + Meilisearch 연동
-**검증:** V1, V2, V3, V5
+#### Phase 1c: ClassifAI + Meilisearch Integration
+**Verification:** V1, V2, V3, V5
 
-- [ ] ClassifAI 플러그인 설치 + **OpenAI API 키** 설정 (OpenRouter 불가)
-  - Settings → ClassifAI → OpenAI API Key 입력
-- [ ] ClassifAI 설정에서 `private` 상태 처리 확인 (v2.2.2+ 체크박스)
-- [ ] **Meilisearch for WP 플러그인 설치** → **자동 색인 비활성화** (v3.3)
-  > ⚠️ WP 플러그인의 자동 색인을 끄고 Python 패키지가 단독 관리.
-  > "보조/백업"으로 두 개를 동시에 실행하면 uid 충돌로 운영 지옥.
-  > Phase 1d에서 WP 플러그인의 uid 형식을 확인하고 Python 패키지와 맞춤.
-- [ ] **Meilisearch embedder 설정:**
+- [ ] ClassifAI plugin install + **OpenAI API key** setting (OpenRouter not supported)
+  - Settings → ClassifAI → Enter OpenAI API Key
+- [ ] ClassifAI `private` status handling (v2.2.2+ checkbox)
+- [ ] **Meilisearch for WP plugin install** → **disable auto-index** (v3.3)
+  > ⚠️ Turn off WP plugin auto-index. Python package manages alone.
+  > Keeping both as "backup" causes uid collision hell. Phase 1d: verify WP plugin uid format, match Python package.
+- [ ] **Meilisearch embedder setting:**
   ```bash
   curl -X PATCH "http://127.0.0.1:7700/indexes/wp_posts/settings/embedders" \
     -H "Authorization: Bearer ${MEILI_MASTER_KEY}" \
@@ -385,9 +384,9 @@ POST → WP 저장 (항상 성공) → 즉시 응답
       }
     }'
   ```
-  - ⚠️ bge-m3 첫 색인 시 자동 다운로드 (~2.2GB, 5~15분). HF 캐시 볼륨에 저장되므로 재시작 시 재다운로드 없음.
-  - v3.3 정정: `documentTemplateMaxBytes: 10000`은 **임베딩 생성 시 사용할 텍스트의 최대 바이트** (문서 자체 저장 제한이 아님). 전문은 무제한 저장됨. 10,000바이트 ≈ 5,000 한국어 글자 ≈ bge-m3 입력 제한(8,192토큰) 내이므로 안전. 청킹은 임베딩 품질을 위한 것.
-- [ ] **인덱스 스키마 정의:**
+  - ⚠️ bge-m3 first index auto-downloads (~2.2GB, 5-15min). Saved in HF cache volume, no re-download on restart.
+  - v3.3 fix: `documentTemplateMaxBytes: 10000` is **max bytes of text for embedding** (not document storage limit). Transcripts stored unlimited. 10,000 bytes ≈ 5,000 Korean chars ≈ within bge-m3 input limit (8,192 tokens) — safe. Chunking is for embedding quality.
+- [ ] **Index schema definition:**
   ```bash
   curl -X PATCH "http://127.0.0.1:7700/indexes/wp_posts/settings" \
     -H "Authorization: Bearer ${MEILI_MASTER_KEY}" \
@@ -399,7 +398,7 @@ POST → WP 저장 (항상 성공) → 즉시 응답
       "displayedAttributes": ["title", "content", "excerpt", "categories", "tags", "date", "status", "_enriched"]
     }'
   ```
-- [ ] **Meilisearch Search API Key 생성** (master key 대신 search-only key)
+- [ ] **Meilisearch Search API Key creation** (search-only key instead of master)
   ```bash
   curl -X POST "http://127.0.0.1:7700/keys" \
     -H "Authorization: Bearer ${MEILI_MASTER_KEY}" \
@@ -412,73 +411,73 @@ POST → WP 저장 (항상 성공) → 즉시 응답
       "expiresAt": null
     }'
   ```
-- [ ] **🧪 V1 테스트:** private 글 저장 → ClassifAI 자동 증류 동작 확인
-- [ ] **🧪 V2 테스트:** private 글 → Python으로 Meilisearch에 색인 → 검색 확인
-- [ ] **🧪 V3 테스트:** 한국어 쿼리 10개로 bge-m3 시맨틱 검색 정확도 확인
-- [ ] **🧪 V5 테스트:** ClassifAI 장애 시뮬레이션 → 글 저장 성공, excerpt만 null
+- [ ] **🧪 V1 test:** Save private post → ClassifAI auto enrichment runs
+- [ ] **🧪 V2 test:** Private post → Python indexes to Meilisearch → search works
+- [ ] **🧪 V3 test:** Korean queries (10) → bge-m3 semantic search accuracy
+- [ ] **🧪 V5 test:** Simulate ClassifAI failure → save succeeds, excerpt only null
 
-#### Phase 1d: 보안 + 안정성
-**검증:** V4, V6, V7
+#### Phase 1d: Security + Stability
+**Verification:** V4, V6, V7
 
-- [ ] **🧪 V4:** 6G 리미트에서 `docker stats`로 24시간 메모리 모니터링
-- [ ] **🧪 V7:** writer/reader Application Passwords로 REST API POST/GET 성공
-- [ ] 최소 백업 설정
+- [ ] **🧪 V4:** 24-hour memory monitoring via `docker stats` on 6GB limit
+- [ ] **🧪 V7:** writer/reader Application Passwords REST API POST/GET succeed
+- [ ] Minimum backup setup
   ```bash
   PROJECT=${COMPOSE_PROJECT_NAME:-wp-memlog}
-  # Meilisearch (인덱스 + 임베딩 캐시)
+  # Meilisearch (index + embedding cache)
   docker run --rm -v ${PROJECT}_meili_data:/data -v $(pwd):/backup \
     alpine tar czf /backup/meili_backup_$(date +%Y%m%d).tar.gz /data
-  # WordPress (파일)
+  # WordPress (files)
   docker run --rm -v ${PROJECT}_wp_data:/data -v $(pwd):/backup \
     alpine tar czf /backup/wp_backup_$(date +%Y%m%d).tar.gz /data
-  # MariaDB 덤프
+  # MariaDB dump
   docker exec ${PROJECT}-db-1 mysqldump -u root -p"${MYSQL_ROOT_PASSWORD}" wp_memlog \
     > backup/db_$(date +%Y%m%d).sql
   ```
-- [ ] **🧪 V6:** 백업 → 볼륨 삭제 → 복원 → 데이터 완전성 확인
-- [ ] 리소스 사용량 측정 (RAM, CPU, 디스크 I/O)
-- [ ] **`monitor.sh`** — 임계치 초과 시에만 알림 (1분 cron)
+- [ ] **🧪 V6:** Backup → volume delete → restore → data integrity
+- [ ] Resource usage measurement (RAM, CPU, disk I/O)
+- [ ] **`monitor.sh`** — Alert only on threshold exceed (1-min cron)
   ```bash
   #!/bin/bash
   MEILI_MEM=$(docker stats wp-memlog-meilisearch-1 \
     --no-stream --format "{{.MemUsage}}" | awk '{print $1}' | \
-    sed 's/GiB//' | awk '{print int($1 * 1024)}')  # MB 단위
+    sed 's/GiB//' | awk '{print int($1 * 1024)}')  # MB
   THRESHOLD=5325  # 5.2GB in MB
   if [ "$MEILI_MEM" -gt "$THRESHOLD" ]; then
-    MSG="🚨 wp-memlog: Meilisearch 메모리 ${MEILI_MEM}MB (임계 ${THRESHOLD}MB 초과)"
+    MSG="🚨 wp-memlog: Meilisearch memory ${MEILI_MEM}MB (exceeds ${THRESHOLD}MB)"
     curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
       -d "chat_id=${TG_CHAT_ID}&text=${MSG}" > /dev/null 2>&1
   fi
   DISK_USAGE=$(df /var/lib/docker/volumes | tail -1 | awk '{print $5}' | sed 's/%//')
   if [ "$DISK_USAGE" -gt 80 ]; then
-    echo "🚨 $(date): Docker 볼륨 디스크 ${DISK_USAGE}% 사용" >> /var/log/wp-memlog-monitor.log
+    echo "🚨 $(date): Docker volume disk ${DISK_USAGE}%" >> /var/log/wp-memlog-monitor.log
   fi
   ```
 
-### Phase 2: wp-memlog Python 패키지
+### Phase 2: wp-memlog Python Package
 
-**목표:** 에이전트가 세션 전문을 WP에 자동 포스팅 + Meilisearch 색인하는 도구
+**Goal:** Agent auto-posts session transcripts to WP + Meilisearch indexes
 
-- [ ] **패키지 구조 (v3.3: MVP 간소화)**
-  > Phase 1 MVP에 실제 필요한 것만. 너무 이른 모듈 분리는 인터페이스 불안정 → 리팩토링 비용 증가.
+- [ ] **Package structure** (v3.3: MVP simplified)
+  > Only what's actually needed for Phase 1 MVP. Premature module separation = unstable interfaces → refactoring cost.
   ```toml
-  # pyproject.toml 핵심 의존성
+  # pyproject.toml key dependencies
   [project.dependencies]
   python = ">=3.10"
-  httpx = ">=0.27"            # async HTTP (requests 대체)
-  meilisearch = ">=0.31"      # 공식 Python SDK (REST 직접 호출 대신)
-  tiktoken = ">=0.7"          # v3.3: 필수 의존성 (250KB, 정확한 토큰 카운트)
-  python-dotenv = ">=1.0"     # .env 파일 로딩
-  tenacity = ">=8.0"          # 재시도 (지수 백오프)
+  httpx = ">=0.27"            # async HTTP (replaces requests)
+  meilisearch = ">=0.31"      # Official Python SDK (instead of REST direct)
+  tiktoken = ">=0.7"          # v3.3: required (250KB, accurate token count)
+  python-dotenv = ">=1.0"     # .env loading
+  tenacity = ">=8.0"          # retry (exponential backoff)
   ```
   ```
   wp-memlog/
   ├── pyproject.toml
   ├── src/wp_memlog/
   │   ├── __init__.py
-  │   ├── client.py          # WP REST API + Meilisearch 검색 + 세션 POST (통합)
-  │   ├── session.py         # SessionPayload + 멱등성 + 청킹 (통합)
-  │   └── indexer.py         # Meilisearch 직접 색인 (WP 플러그인 비활성화 후 단독 관리)
+  │   ├── client.py          # WP REST API + Meilisearch search + session POST (integrated)
+  │   ├── session.py         # SessionPayload + idempotency + chunking (integrated)
+  │   └── indexer.py         # Meilisearch direct index (WP plugin disabled, manages alone)
   ├── scripts/
   │   ├── healthcheck.sh
   │   ├── safe-compose.sh
@@ -488,9 +487,9 @@ POST → WP 저장 (항상 성공) → 즉시 응답
       ├── test_session.py
       └── test_indexer.py
   ```
-  > Phase 2~3에서 기능이 안정화되면 모듈 분리 리팩토링.
+  > Refactor module separation when stable in Phase 2-3.
 
-- [ ] **에러 처리 전략 (v3.3 신규)**
+- [ ] **Error handling strategy** (v3.3 new)
   ```python
   class WpMemlogError(Exception): pass
   class WpApiError(WpMemlogError): pass
@@ -504,22 +503,22 @@ POST → WP 저장 (항상 성공) → 즉시 응답
       ...
   ```
 
-- [ ] **`session.py` — 세션 페이로드 + 멱등성 + 청킹 (v3.3 수정)**
+- [ ] **`session.py` — Session payload + idempotency + chunking** (v3.3 fix)
   ```python
   import uuid
 
   @dataclass
   class SessionPayload:
-      """에이전트가 세션 시작 시 생성하고 종료까지 유지하는 페이로드."""
+      """Payload created at session start, kept until session end."""
       agent: str
       date: str
       content: str
       idem_key: str = field(default_factory=lambda: str(uuid.uuid4()))
-      # POST 재시도 시 동일 idem_key를 그대로 사용 → 중복 방지
-      # content 기반이 아닌 UUID 기반이므로 타임스탬프/포맷 변경에 영향 없음
+      # Same idem_key on retry → duplicate prevention
+      # UUID-based, not content-based → unaffected by timestamp/format change
 
   def check_existing(idem_key: str) -> int | None:
-      """WP-CLI로 기존 글 확인 (REST API meta 쿼리 비활성화 우회)."""
+      """Check existing via WP-CLI (bypass REST API meta query disabled)."""
       result = subprocess.run([
           "docker", "exec", "wp-memlog-wp-1", "wp", "post", "list",
           "--post_type=post", "--post_status=private",
@@ -530,17 +529,17 @@ POST → WP 저장 (항상 성공) → 즉시 응답
       return int(posts[0]["ID"]) if posts else None
   ```
 
-- [ ] **`client.py` — WP REST API + Meilisearch 검색 (v3.3: 이벤트 드리븐)**
+- [ ] **`client.py` — WP REST API + Meilisearch search** (v3.3: Event-driven)
   ```python
   @dataclass
   class PostResult:
       post_id: int
       indexed: bool
-      enriched: bool     # ClassifAI 증류 완료 여부
+      enriched: bool     # ClassifAI enrichment complete
 
   def post_session(payload: SessionPayload) -> PostResult:
-      """v3.3: 저장과 증류를 분리. ClassifAI 장애가 저장/검색에 영향 주지 않음."""
-      # 1단계: WP에 저장 (항상 성공해야 함)
+      """v3.3: Separate save and enrichment. ClassifAI failure doesn't affect save/search."""
+      # Step 1: Save to WP (must always succeed)
       existing = check_existing(payload.idem_key)
       if existing:
           post_id = existing
@@ -552,28 +551,28 @@ POST → WP 저장 (항상 성공) → 즉시 응답
                     "_classifai_status": "pending"}
           )
 
-      # 2단계: Meilisearch 직접 색인 (excerpt 없이도 즉시)
+      # Step 2: Index to Meilisearch directly (immediate, even without excerpt)
       index_post(post_id, payload.title, payload.content,
                  excerpt=None, categories=[payload.category])
 
-      # 3단계: ClassifAI는 WP save_post 훅으로 비동기 처리
-      # ClassifAI 완료 → WP 메타 업데이트 → Meilisearch excerpt 업데이트
+      # Step 3: ClassifAI handled async via WP save_post hook
+      # ClassifAI complete → WP meta update → Meilisearch excerpt update
       return PostResult(post_id=post_id, indexed=True, enriched=False)
   ```
 
-  **검색 결과 구조 (v3.3 개선):**
+  **Search result structure** (v3.3 improved):
   ```python
   @dataclass
   class SearchResult:
       post_id: int
       title: str
-      excerpt: str | None        # None이면 ClassifAI 미완료
-      content_preview: str       # 전문 앞 500자 (excerpt 없을 때 폴백)
+      excerpt: str | None        # None = ClassifAI incomplete
+      content_preview: str       # First 500 chars (fallback when no excerpt)
       date: str
       categories: list[str]
       tags: list[str]
       relevance_score: float     # Meilisearch _rankingScore
-      enriched: bool             # ClassifAI 증류 완료 여부
+      enriched: bool             # ClassifAI enrichment complete
       url: str
 
   def search_sessions(query: str, category: str = None, limit: int = 5) -> list[SearchResult]:
@@ -582,20 +581,20 @@ POST → WP 저장 (항상 성공) → 즉시 응답
           'hybrid': {'semanticRatio': 0.7, 'embedder': 'default'},
           'filter': [f'categories = {category}'] if category else None,
       })
-      # 에이전트가 판단할 수 있는 메타데이터 포함하여 반환
+      # Return with metadata agent can judge
   ```
 
-- [ ] **`indexer.py` — Meilisearch 직접 색인 (v3.3)**
+- [ ] **`indexer.py` — Meilisearch direct index** (v3.3)
   ```python
-  from meilisearch import Client  # v3.3: REST 직접 호출 대신 공식 SDK
+  from meilisearch import Client  # v3.3: Official SDK instead of REST direct
 
   meili = Client("http://127.0.0.1:7700", api_key=MEILI_SEARCH_API_KEY)
   index = meili.index(MEILI_INDEX_NAME)
 
   def index_post(post_id: int, title: str, content: str,
                  excerpt: str | None = None, categories: list = None):
-      """WP 글을 Meilisearch에 직접 색인.
-      v3.3: WP 플러그인 색인은 비활성화하고 Python 패키지가 단독 관리.
+      """Index WP post to Meilisearch directly.
+      v3.3: WP plugin auto-index disabled, Python package manages alone.
       """
       index.add_documents([{
           "id": str(post_id),
@@ -609,39 +608,39 @@ POST → WP 저장 (항상 성공) → 즉시 응답
       }])
 
   def update_excerpt(post_id: int, excerpt: str):
-      """ClassifAI 완료 후 요약만 업데이트."""
+      """Update only summary after ClassifAI completes."""
       index.update_documents([{
           "id": str(post_id),
           "excerpt": excerpt,
           "_enriched": True,
       }])
   ```
-  > ⚠️ **v3.3 핵심 결정:** Meilisearch for WP 플러그인의 자동 색인을 **비활성화**.
-  > Python 패키지가 단독으로 색인 관리. uid 형식을 맞추더라도 두 소스가 동시에
-  > 쓰면 "어느 쪽이 진실인지" 모르는 상태가 됨. Phase 1c에서 WP 플러그인 uid
-  > 형식을 확인한 후, Python 패키지와 동일한 `id: str(post_id)`를 사용.
+  > ⚠️ **v3.3 key decision:** **Disable** Meilisearch for WP auto-index.
+  > Python package manages alone. Even matching uid format, running both sources
+  > means "which is truth?" Phase 1d: verify WP plugin uid format,
+  > then use identical `id: str(post_id)` as Python package.
 
-- [ ] **세션 청킹 로직** (`session.py`)
+- [ ] **Session chunking logic** (`session.py`)
   ```python
   import tiktoken
   _enc = tiktoken.encoding_for_model("gpt-4")
 
   def count_tokens(text: str) -> int:
-      """정확한 토큰 카운트 (tiktoken). v3.3: 필수 의존성."""
+      """Accurate token count (tiktoken). v3.3: required."""
       return len(_enc.encode(text))
 
   def chunk_session(transcript: str, max_tokens: int = 6000) -> list[str]:
-      """문장 단위 + 줄바꿈 기준 청킹. 한국어 대화 전문 대응."""
-      # 마크다운 코드블록 보호
+      """Chunk by sentence + line break. Korean conversation support."""
+      # Protect markdown code blocks
       code_blocks = []
       def _protect(m):
           code_blocks.append(m.group(0))
           return f'\x00CODEBLOCK_{len(code_blocks)-1}\x00'
       transcript = re.sub(r'```.*?```', _protect, transcript, flags=re.DOTALL)
-      # 백틱 3개도 보호 (중첩 방지)
+      # Protect triple backticks (prevent nesting)
       transcript = transcript.replace('```', '\x00TRIPLE_BACKTICK\x00')
 
-      # 문장 + 줄바꿈 기준 분할
+      # Split by sentence + line break
       parts = re.split(r'(?<=[.!?。])\s*|\n{2,}', transcript)
 
       chunks, current = [], ""
@@ -655,7 +654,7 @@ POST → WP 저장 (항상 성공) → 즉시 응답
       if current.strip():
           chunks.append(current.strip())
 
-      # v3.3: 복원 로직 버그 수정 (기존: 루프 변수 미사용으로 일부 청크 복원 안 됨)
+      # v3.3: Restoration logic bug fix (old: loop var unused, some chunks unrestored)
       result = []
       for chunk in chunks:
           restored = chunk
@@ -665,171 +664,171 @@ POST → WP 저장 (항상 성공) → 즉시 응답
           result.append(restored)
       return chunks
   ```
-  - 청크간 제목 구분: `... 세션 — {주제} (1/3)`, `... (2/3)` ...
-  - v3.3 TODO: 코드블록이 `max_tokens`보다 크면 청크 하나가 한없이 커지는 문제. 코드블록 자체 분할 전략은 Phase 2 테스트에서 결정.
+  - Title separator between chunks: `... Session — {topic} (1/3)`, `... (2/3)` ...
+  - v3.3 TODO: Problem when code block > `max_tokens`. One chunk infinitely large. Code block split strategy decided in Phase 2 test.
 
-- [ ] 세션 주제 자동 추출
-  - 방식 1 (기본): LLM 프롬프트로 주제 추출 → 세션 종료 시 에이전트가 직접 생성
-  - 방식 2 (폴백): 대화 첫 10턴에서 핵심 키워드 3개 추출
-- [ ] **ClassifAI 실패 시 재처리**
+- [ ] Auto session topic extraction
+  - Method 1 (default): LLM prompt topic extraction → created by agent at session end
+  - Method 2 (fallback): Extract 3 keywords from first 10 turns
+- [ ] **ClassifAI failure reprocessing**
   ```bash
-  # 실패한 글 ID 확인
+  # Get failed post IDs
   wp post list --meta_key=_classifai_error --fields=ID --format=csv
-  # 대량 재처리
+  # Bulk reprocess
   wp post list --meta_key=_classifai_error --field=ID --format=ids \
     | xargs -I{} wp classifai classify {}
   ```
 
-### Phase 3: 검색 통합
+### Phase 3: Search Integration
 
-**목표:** 에이전트가 Meilisearch API로 과거 세션을 검색
+**Goal:** Agent searches past sessions via Meilisearch API
 
-- [ ] Meilisearch 검색 함수 구현
-  - 카테고리 필터 (특정 에이전트 결과만)
-  - 날짜 범위 필터
-  - 하이브리드 검색: `hybrid` 파라미터로 키워드/시맨틱 비율 조절 (기본 `0.7` 시맨틱 / `0.3` 키워드)
-  - 시맨틱 검색은 **bge-m3 로컬 embedder**가 처리 → API 비용 $0
-- [ ] 검색 결과 → `SearchResult` 구조로 반환 (v3.3)
-  - excerpt 없으면 content_preview(전문 앞 500자)로 폴백
-  - `_enriched` 플래그로 ClassifAI 완료 여부 표시
-- [ ] session-cleanup 스킬에 wp-memlog 훅 추가
-- [ ] Hermes `config.yaml`에 MCP 서버 등록 (선택)
+- [ ] Meilisearch search functions
+  - Category filter (specific agent results only)
+  - Date range filter
+  - Hybrid search: keyword/semantic ratio via `hybrid` param (default `0.7` semantic / `0.3` keyword)
+  - Semantic search handled by **bge-m3 local embedder** → $0 API cost
+- [ ] Search results → `SearchResult` structure return (v3.3)
+  - Fallback to content_preview (first 500 chars) if no excerpt
+  - `_enriched` flag indicates ClassifAI completion
+- [ ] session-cleanup skill wp-memlog hook
+- [ ] Hermes `config.yaml` MCP server registration (optional)
 
-### Phase 4: 다중 에이전트 연동
+### Phase 4: Multi-Agent Integration
 
-**목표:** 데우스/맥거핀/휴브리스 각각에서 자동 동작
+**Goal:** Auto-run from 데우스/맥거핀/휴브리스
 
-- [ ] 데우스 (Hermes): session-cleanup 스킬에서 자동 호출
-- [ ] 맥거핀 (OpenCode): 세션 종료 훅 연동
-- [ ] 휴브리스 (GeminiCLI): Cron 증분 수집
-- [ ] 크로스 참조: 한 에이전트가 다른 에이전트의 과거 검색
+- [ ] 데우스 (Hermes): Auto-call from session-cleanup skill
+- [ ] 맥거-pin (OpenCode): Session end hook integration
+- [ ] 휴브리스 (GeminiCLI): Cron incremental collection
+- [ ] Cross-reference: One agent searches another's past
 
-### Phase 5: 고도화 (선택)
+### Phase 5: Enhancement (Optional)
 
-- [ ] GitHub repo 생성 (`wp-memlog`)
-- [ ] README: 시작 가이드 (Docker Compose, 플러그인 설정, API 인증)
-- [ ] ClassifAI + Ollama 연동 (v3.3.1+, API 비용 완전 제로)
-- [ ] 대시보드 (운영 모니터링)
-- [ ] 개인화 가이드 (각자 자기 WP에 연결)
+- [ ] GitHub repo creation (`wp-memlog`)
+- [ ] README: Getting started guide (Docker Compose, plugin setup, API auth)
+- [ ] ClassifAI + Ollama integration (v3.3.1+, complete $0 API cost)
+- [ ] Dashboard (operations monitoring)
+- [ ] Personalization guide (connect to own WP)
 
 ---
 
-## 5. 비용 추정 (OpenAI 직결 과금 기준)
+## 5. Cost Estimate (OpenAI Direct Billing)
 
-### API 요구사항
-- **ClassifAI 증류:** 다양한 프로바이더 지원 (OpenAI, xAI/Grok, Together AI, Google AI, Ollama, Azure, AWS Bedrock). **v3.4: OpenAI provider는 `classifai_openai_api_request_post_url` 필터로 URL 오버라이드 가능 → OpenRouter 사용 가능.** 비용은 선택한 프로바이더에 따라 다름.
-- **Meilisearch 시맨틱 검색:** bge-m3 로컬 embedder → **API 비용 $0**
-- **검색 쿼리:** Meilisearch가 로컬에서 처리 → **API 리퀘스트 0**
+### API Requirements
+- **ClassifAI enrichment:** Multi-provider support (OpenAI, xAI/Grok, Together AI, Google AI, Ollama, Azure, AWS Bedrock). **v3.4: OpenAI provider can override URL via `classifai_openai_api_request_post_url` filter → OpenRouter available.** Cost varies by provider.
+- **Meilisearch semantic search:** bge-m3 local embedder → **$0 API cost**
+- **Search queries:** Meilisearch handles locally → **0 API requests**
 
-### API 호출 구조 (ClassifAI만 OpenAI 호출)
+### API Call Structure (ClassifAI OpenAI calls only)
 
-| 단계 | API | 모델 | 토큰 (1세션당) | 단가 |
+| Step | API | Model | Tokens (per session) | Rate |
 |---|---|---|---|---|
-| ClassifAI 요약 | **O** | gpt-4o-mini | ~3,000(입) + ~200(출력) | $0.00057 |
-| ClassifAI 임베딩 | **O** | text-embedding-3-small | ~3,000(입) | $0.00006 |
-| Meilisearch 검색 | **X** | bge-m3 로컬 | 0 | $0 |
-| **세션당 합계** | | | ~6,200 | **~$0.00063** |
+| ClassifAI Summary | **O** | gpt-4o-mini | ~3,000(in) + ~200(out) | $0.00057 |
+| ClassifAI Embedding | **O** | text-embedding-3-small | ~3,000(in) | $0.00006 |
+| Meilisearch Search | **X** | bge-m3 local | 0 | $0 |
+| **Total per session** | | | ~6,200 | **~$0.00063** |
 
-### 월간 비용 시나리오
+### Monthly Cost Scenario
 
-**기본: 하루 5세션**
+**Basic: 5 sessions per day**
 
-| 항목 | 일간 | 월간 (30일) | 비용 |
+| Item | Daily | Monthly (30 days) | Cost |
 |---|---|---|---|
-| ClassifAI 요약 | 5회 | 150회 | ~$0.09 |
-| ClassifAI 임베딩 | 5회 | 150회 | ~$0.009 |
-| **월간 총비용** | | | **~$0.10/월** |
+| ClassifAI Summary | 5 | 150 | ~$0.09 |
+| ClassifAI Embedding | 5 | 150 | ~$0.009 |
+| **Monthly total** | | | **~$0.10/month** |
 
-**최대: 3에이전트 × 하루 10세션**
+**Maximum: 3 agents × 10 sessions per day**
 
-| 항목 | 일간 | 월간 (30일) | 비용 |
+| Item | Daily | Monthly (30 days) | Cost |
 |---|---|---|---|
-| ClassifAI 요약 | 30회 | 900회 | ~$0.54 |
-| ClassifAI 임베딩 | 30회 | 900회 | ~$0.054 |
-| **월간 총비용** | | | **~$0.60/월** |
+| ClassifAI Summary | 30 | 900 | ~$0.54 |
+| ClassifAI Embedding | 30 | 900 | ~$0.054 |
+| **Monthly total** | | | **~$0.60/month** |
 
-> ⭐ **핵심: 검색은 전부 Meilisearch 로컬 처리 → API 비용 제로. ClassifAI 증류만 과금. 월 $1 미만으로 사실상 무료.**
+> ⭐ **Key: All search handled locally by Meilisearch → $0 API cost. Only ClassifAI enrichment billed. Under $1/month = effectively free.**
 
-### 비용 절감 옵션
+### Cost Savings Options
 
-| 방법 | 절약 효과 | 설명 |
+| Method | Savings | Description |
 |---|---|---|
-| **OpenRouter 연동** (v3.4) | **원하는 모델 사용 가능** | `classifai_openai_api_request_post_url` 필터로 OpenRouter 엔드포인트 오버라이드. 무료/저렴한 모델 사용 가능 |
-| **xAI/Grok 사용** (v3.4) | **xAI 요금제 적용** | ClassifAI 네이티브 xAI 프로바이더 지원. 별도 API 키 설정 |
-| **Ollama 연동** (v3.4) | **API $0** | ClassifAI 네이티브 Ollama 프로바이더 지원. 엔드포인트 URL 직접 설정. 요약까지 로컬. 단 RAM 8GB+ 필요 |
-| bge-m3 로컬 (기본) | 검색 API $0 | 시맨틱 검색 쿼리를 로컬에서 처리 (이미 적용됨) |
+| **OpenRouter** (v3.4) | **Use desired model** | Override OpenRouter endpoint via `classifai_openai_api_request_post_url` filter. Free/cheap models available |
+| **xAI/Grok** (v3.4) | **xAI pricing** | ClassifAI native xAI provider support. Separate API key |
+| **Ollama** (v3.4) | **$0 API** | ClassifAI native Ollama provider support. Set endpoint URL directly. Local summarization. Requires RAM 8GB+ |
+| bge-m3 local (default) | Search API $0 | Semantic queries handled locally (already applied) |
 
 ---
 
-## 6. 성공 기준
+## 6. Success Criteria
 
-- [ ] 3개 에이전트의 세션 전문이 자동으로 WordPress에 저장됨
-- [ ] ClassifAI가 private 글을 자동 증류 (요약/태깅) 함
-- [ ] 한국어 하이브리드 검색(키워드+시맨틱)이 정상 동작함
-- [ ] 검색 결과 상위 5개의 관련도가 직접 파일 읽기보다 우수함
-- [ ] 월 API 비용이 $1 미만으로 유지됨
-- [ ] ClassifAI 장애 시에도 글 저장 + 검색이 정상 동작함 (v3.3)
+- [ ] Session transcripts from 3 agents automatically saved to WordPress
+- [ ] ClassifAI auto-enriches (summary/tag) private posts
+- [ ] Korean hybrid search (keyword+semantic) works correctly
+- [ ] Top 5 search results more relevant than direct file reading
+- [ ] Monthly API cost maintained under $1
+- [ ] Save + search work when ClassifAI fails (v3.3)
 
 ---
 
-## 7. 용어집
+## 7. Glossary
 
-| 용어 | 의미 |
+| Term | Meaning |
 |---|---|
-| **전문** | 세션 대화 내용 전체 (원문 그대로) |
-| **증류** | ClassifAI가 수행하는 요약/태깅/임베딩 생성 |
-| **세션** | 에이전트의 단일 대화 세션 (시작→종료) |
-| **멱등성** | 동일 요청이 여러 번 실행되어도 결과가 동일함 (중복 저장 방지) |
-| **이벤트 드리븐** | WP save_post 훅을 트리거로 비동기 처리 (v3.3) |
+| **Transcript** | Full session conversation (original text as-is) |
+| **Enrichment** | Summary/tag/embedding generation done by ClassifAI |
+| **Session** | Single agent conversation session (start→end) |
+| **Idempotency** | Same request multiple times = same result (duplicate prevention) |
+| **Event-driven** | Async processing via WP save_post hook (v3.3) |
 
 ---
 
-## 8. 미해결 / 결정 필요
+## 8. Unresolved / Decision Needed
 
-| 항목 | 상태 | 비고 |
+| Item | Status | Notes |
 |---|---|---|
-| WordPress MCP 도입 여부 | 보류 | Phase 3에서 검토. MCP 없이도 Meilisearch REST API로 검색 가능 |
-| ClassifAI 요약 모델 | gpt-4o-mini (기본) | 비용 최적화. Phase 2 테스트 후 Claude 등으로 교체 가능 |
-| Meilisearch for WP `private` 색인 | **WP 플러그인 색인 비활성화** | v3.3: Python 패키지가 단독 색인 관리. WP 플러그인은 설치만 유지 (비활성화) |
-| Meilisearch 메모리 | **6G 확정** | bge-m3 ~2.2GB + 추론 + 인덱스 처리를 위한 안전 마진 |
-| ClassifAI 동기/비동기 | **비동기 분리 (v3.3)** | 저장과 증류를 분리. ClassifAI 장애가 저장/검색에 영향 없음 |
-| `draft` vs `private` | **`private` 확정** | ClassifAI 설정에서 `private` 체크 → 즉시 동작 (v2.2.2+) |
-| 로컬 LLM 전환 | 미정 | ClassifAI 네이티브 Ollama 프로바이더 지원 (v3.4 확인). 엔드포인트 URL 직접 설정 가능. RAM 8GB+ 필요 |
-| OpenRouter 연동 | ✅ **Python에서 직접 구현** | `src/wp_memlog/enrichment.py` - ClassifAI 플러그인 대신 Python에서 OpenRouter API 직접 호출 |
-| 코드블록 대용량 청킹 | 미정 | Phase 2 테스트에서 코드블록 자체 분할 전략 결정 |
+| WordPress MCP adoption | Pending | Review in Phase 3. Search works without MCP via Meilisearch REST API |
+| ClassifAI summary model | gpt-4o-mini (default) | Cost optimal. Can switch to Claude etc. after Phase 2 test |
+| Meilisearch for WP `private` index | **WP plugin disabled** | v3.3: Python package indexes alone. WP plugin installed only (disabled) |
+| Meilisearch memory | **6GB confirmed** | bge-m3 ~2.2GB + inference + index safety margin |
+| ClassifAI sync/async | **Async separated (v3.3)** | Separate save/enrichment. ClassifAI failure doesn't affect save/search |
+| `draft` vs `private` | **`private` confirmed** | Check `private` in ClassifAI settings → works immediately (v2.2.2+) |
+| Local LLM switch | TBD | ClassifAI native Ollama provider support (v3.4 check). Set endpoint directly. Requires RAM 8GB+ |
+| OpenRouter integration | ✅ **Implemented in Python directly** | `src/wp_memlog/enrichment.py` - Call OpenRouter API directly from Python instead of ClassifAI WP plugin |
+| Large code block chunking | TBD | Code block split strategy decided in Phase 2 test |
 
-**v5.0 개선 과제:**
+**v5.0 Improvement Tasks:**
 
-| # | 항목 | 상세 | 우선순위 |
+| # | Item | Details | Priority |
 |---|---|---|---|
-| I1 | ClassifAI OpenRouter 인증 문제 해결 | **높음** - 현재 Python에서만 동작, WP 플러그인 자동화 안됨 |
-| I2 | WP save_post 훅 연동 | ClassifAI 대안 구현 후 자동 요약 가능 |
+| I1 | ClassifAI OpenRouter auth problem | **High** - Currently only Python works, WP plugin no automation |
+| I2 | WP save_post hook integration | Auto summarization after ClassifAI alternative implementation |
 
 ---
 
-## 9. 참고
+## 9. References
 
 - [Meilisearch for WordPress](https://wordpress.org/plugins/meilisearch-wordpress/)
 - [ClassifAI (10up)](https://wordpress.org/plugins/classifai/)
 - [WordPress MCP (Automattic)](https://github.com/automattic/wordpress-mcp)
-- [WordPress MCP Adapter (공식)](https://github.com/WordPress/mcp-adapter)
-- 기존 사이트: https://downwind7.wordpress.com/ (Football&gossip)
+- [WordPress MCP Adapter](https://github.com/WordPress/mcp-adapter)
+- Existing site: https://downwind7.wordpress.com/ (Football&gossip)
 
 ---
 
-## 10. 변경 이력
+## 10. Changelog
 
-| 버전 | 일자 | 변경 내용 |
+| Version | Date | Changes |
 |---|---|---|
-| v1.0 | 2026-04-24 | 초안 (WP + ClassifAI + Meilisearch 아키텍처 확정) |
-| v2.0 | 2026-04-24 | 플러그인 비교 검토, Meilisearch 확정, ClassifAI 확정, bge-m3 로컬 |
-| v3.0 | 2026-04-25 | 멱등성, 청킹, 비용 분석, Phase 구조화 |
-| v3.1 | 2026-04-27 | ClassifAI private=설정 체크박스 정정, REST GET 수정, 청킹 한국어 대응, estimate_tokens, MariaDB 전환, Meilisearch Search API Key, 최소 백업 |
-| v3.2 | 2026-04-27 | C1/C2 실패 대안 매트릭스, Meilisearch 직접 색인, docker-compose 보강, 멱등성 키, estimate_tokens tiktoken, healthcheck/safe-compose, 검증 체크리스트, .env 템플릿, Phase 3~5 상세도, 모니터링/알림, 볼륨 보호 |
-| v3.3 | 2026-04-27 | 15년차 리뷰 2차 반영: 멱등성 UUID 외부 주입, chunker 복원 버그 수정, MariaDB utf8mb4+innodb-buffer-pool, read_private_posts+커스텀 WP 역할, ClassifAI 비동기 분리(이벤트 드리븐), Phase 1 분할(1a~1d), bge-m3 HF 캐시 볼륨, Meilisearch Python SDK, tiktoken 필수, tenacity 에러 처리, WP 플러그인 비활성화(단독 관리), SearchResult 구조, documentTemplateMaxBytes 정정, 볼륨 레이블, monitor.sh, 패키지 구조 MVP 간소화(3모듈) |
-| **v4.0** | **2026-04-27** | **구현 완료: Phase 1-2 완, Docker-compose WP+MariaDB+Meilisearch, WordPress 설치+역할+App Password, Meilisearch 인덱스+스키마, Python 패키지(bge-m3 embedder+indexer+session+client), CLI(post+search), WP-CLI 기반 인증, V1~V7 검증 완료** |
-| **v4.1** | **2026-04-27** | **Phase 3 검색 통합: 카테고리 필터, 하이브리드 검색, excerpt 폴백, CLI 업데이트** |
-| **v4.2** | **2026-04-27** | **Phase 4 다중 에이전트: collector_adapters, agents.yaml, collector_cli, Hermes memory/*.md 지원** |
-| **v5.0** | **2026-04-28** | **검증 완료 + Collector 구현, OpenRouter 직접 연동 (Python), .env 설정, 개선 과제(I1,I2) 추가** |
+| v1.0 | 2026-04-24 | Draft (WP + ClassifAI + Meilisearch architecture confirmed) |
+| v2.0 | 2026-04-24 | Plugin comparison, Meilisearch confirmed, ClassifAI confirmed, bge-m3 local |
+| v3.0 | 2026-04-25 | Idempotency, chunking, cost analysis, Phase structure |
+| v3.1 | 2026-04-27 | ClassifAI private=checkbox fix, REST GET fix, Korean chunking, estimate_tokens, Meilisearch Search API Key, minimal backup |
+| v3.2 | 2026-04-27 | C1/C2 fail alternative matrix, direct Meilisearch index, docker-compose加固, idempotency key, estimate_tokens tiktoken, healthcheck/safe-compose, verification checklist, .env template, Phase 3~5 detail, monitoring/alert, volume protection |
+| v3.3 | 2026-04-27 | 15-year review 2nd: idempotency UUID injection, chunker restoration bug fix, MariaDB utf8mb4+innodb-buffer-pool, read_private_posts+custom WP roles, ClassifAI async separation(event-driven), Phase 1 split(1a~1d), bge-m3 HF cache volume, Meilisearch Python SDK, tiktoken required, tenacity error handling, WP plugin disabled(alone manage), SearchResult structure, documentTemplateMaxBytes fix, volume labels, monitor.sh, package structure MVP simplified(3 modules) |
+| **v4.0** | **2026-04-27** | **Implementation complete: Phase 1-2 complete, Docker-compose WP+MariaDB+Meilisearch, WordPress install+roles+App Password, Meilisearch index+schema, Python package(bge-m3 embedder+indexer+session+client), CLI(post+search), WP-CLI based auth, V1~V7 verification complete** |
+| **v4.1** | **2026-04-27** | **Phase 3 search integration: category filter, hybrid search, excerpt fallback, CLI update** |
+| **v4.2** | **2026-04-27** | **Phase 4 multi-agent: collector_adapters, agents.yaml, collector_cli, Hermes memory/*.md support** |
+| **v5.0** | **2026-04-28** | **Verification complete + Collector, OpenRouter direct integration (Python), .env setup, improvement tasks(I1,I2) added** |
 
-상세 작업 기록: IMPLEMENTATION_LOG.md 참조
+Detailed work log: See IMPLEMENTATION_LOG.md

@@ -13,7 +13,7 @@ except ImportError:
 
 @dataclass
 class SessionPayload:
-    """에이전트가 세션 시작 시 생성하고 종료까지 유지하는 페이로드."""
+    """Payload created at session start, kept until session end."""
     agent: str
     date: str
     content: str
@@ -23,13 +23,13 @@ class SessionPayload:
 
     def __post_init__(self):
         if not self.title:
-            self.title = f"[{self.agent}] {self.date} 세션"
+            self.title = f"[{self.agent}] {self.date} Session"
         if not self.category:
             self.category = self.agent.lower()
 
 
 def count_tokens(text: str) -> int:
-    """정확한 토큰 카운트 (tiktoken)."""
+    """Accurate token count (tiktoken)."""
     if tiktoken is None:
         return len(text) // 4
     try:

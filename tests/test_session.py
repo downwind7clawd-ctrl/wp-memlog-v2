@@ -29,7 +29,7 @@ def test_session_payload_title_default():
         content="Test"
     )
     
-    assert payload.title == "[macguffin] 2026-04-28 세션"
+    assert payload.title == "[macguffin] 2026-04-28 Session"
 
 
 def test_token_count_estimate():
