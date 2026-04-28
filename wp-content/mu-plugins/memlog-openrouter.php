@@ -2,6 +2,7 @@
 /**
  * Plugin Name: Memlog OpenRouter
  * Description: Routes ClassifAI API through OpenRouter
+ * NOTE: Set OPENROUTER_API_KEY in .env file
  */
 
 add_filter("classifai_openai_api_request_post_url", function($url, $options, $feature) {
@@ -9,7 +10,14 @@ add_filter("classifai_openai_api_request_post_url", function($url, $options, $fe
 }, 10, 3);
 
 add_filter("classifai_openai_api_request_headers", function($headers, $options, $feature) {
-    $headers["Authorization"] = "Bearer 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";
+    $api_key = getenv('OPENROUTER_API_KEY');
+    if (!$api_key) {
+        // Fallback to WP option if env not set
+        $api_key = get_option('wp_memlog_openrouter_key', '');
+    }
+    if ($api_key) {
+        $headers["Authorization"] = "Bearer " . $api_key;
+    }
     $headers["HTTP-Referer"] = "http://127.0.0.1:8080";
     $headers["X-Title"] = "wp-memlog";
     return $headers;
