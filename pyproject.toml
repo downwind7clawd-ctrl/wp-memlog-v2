@@ -1,0 +1,37 @@
+[project]
+name = "wp-memlog"
+version = "0.1.0"
+description = "에이전트 무한 기억력 시스템 - 세션 전문 자동 저장 + Meilisearch 검색"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "wp-memlog"}
+]
+
+dependencies = [
+    "httpx>=0.27",
+    "meilisearch>=0.31",
+    "tiktoken>=0.7",
+    "python-dotenv>=1.0",
+    "tenacity>=8.0",
+    "sentence-transformers>=2.2",
+    "torch>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

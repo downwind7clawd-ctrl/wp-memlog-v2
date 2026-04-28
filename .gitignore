@@ -1,0 +1,44 @@
+# Environment (sensitive)
+.env
+.env.*
+!.env.example
+
+# Backups
+backup/
+scripts/backup/
+*.tar.gz
+*.sql
+db_*.sql
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.eggs/
+
+# OpenCode
+.opencode/
+node_modules/
+
+# Logs
+*.log
+/var/log/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Work logs
+.opencode/log/
+IMPLEMENTATION_LOG.md
+docs/
+
+# WordPress content (plugins - keep mu-plugins only)
+wp-content/plugins/
+wp-content/themes/
+wp-content/uploads/

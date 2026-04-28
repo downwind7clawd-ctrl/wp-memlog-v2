@@ -1,0 +1,1 @@
+"""Tests for wp_memlog package"""

@@ -1,0 +1,3 @@
+# wp-memlog collector cron
+# Run every 6 hours
+0 */6 * * * root /home/david/nas_1tb/dev/wp-memlog/scripts/collector.sh --run hermes >> /var/log/wp-memlog-collector.log 2>&1

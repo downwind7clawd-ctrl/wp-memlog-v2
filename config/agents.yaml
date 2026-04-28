@@ -1,0 +1,32 @@
+# wp-memlog multi-agent configuration
+version: "1.0"
+
+defaults:
+  cron: "0 */6 * * *"  # 6 hours
+  enabled: false
+
+agents:
+  hermes:
+    name: "Hermes (Claude Code)"
+    enabled: true
+    session_dir: "{{HOME}}/.claude/projects"
+    session_pattern: "*/memory/*.md"
+    cron: "0 */6 * * *"
+
+  opencode:
+    name: "OpenCode"
+    enabled: false
+    session_dir: "{{HOME}}/.opencode/sessions"
+    session_pattern: "*.json"
+
+  antigravity:
+    name: "AntiGravity"
+    enabled: false
+    session_dir: "{{HOME}}/.antigravity/sessions"
+    session_pattern: "*.json"
+
+  claude_cli:
+    name: "Claude CLI"
+    enabled: false
+    session_dir: "{{HOME}}/.config/Claude/sessions"
+    session_pattern: "*.json"
