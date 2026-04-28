@@ -120,13 +120,30 @@ Agent → WP REST API → WordPress (storage)
 wp-memlog/
 ├── src/
 │   ├── wp_memlog/          # Python package
-│   ├── collector_cli.py    # Collector CLI
-│   └── wp_memlog_cli.py  # Main CLI
+│   │   ├── session.py      # SessionPayload + chunk_session
+│   │   ├── client.py        # WpClient + MeiliSearchClient
+│   │   ├── embedder.py     # BgeM3Embedder
+│   │   ├── indexer.py       # Indexer
+│   │   ├── enrichment.py   # OpenRouter summarization
+│   │   └── collect/        # Multi-agent collector adapters
+│   │       ├── adapters.py # Hermes, OpenCode, AntiGravity adapters
+│   │       └── config.py   # agents.yaml config loader
+│   ├── wp_memlog_cli.py    # Main CLI (post, search)
+│   └── collector_cli.py    # Collector CLI (collect, list)
 ├── scripts/
-│   ├── collector.sh     # Collector daemon
-│   ├── backup.sh       # Backup
-│   └── monitor.sh     # Monitoring
+│   ├── collector.sh       # Collector daemon
+│   ├── backup.sh          # Backup (meili + wp + db)
+│   └── monitor.sh         # Monitoring
+├── wp-content/mu-plugins/ # WordPress must-use plugins
+│   ├── memlog-roles.php   # Custom roles (writer, reader)
+│   ├── memlog-setup.php   # Auto user + app password setup
+│   ├── memlog-openrouter.php # OpenRouter API routing
+│   └── memlog-classifai-auto.php # ClassifAI auto meta
 ├── config/
-│   └── agents.yaml   # Agent configuration
-└── .env           # Environment variables
+│   └── agents.yaml        # Agent configuration
+├── docker-compose.yml     # WP + MariaDB + Meilisearch
+├── pyproject.toml         # Python package config
+├── AGENTS.md              # AI agent security rules
+├── PLAN.md                # Architecture & roadmap
+└── .env                   # Environment variables
 ```

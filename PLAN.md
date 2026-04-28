@@ -1,8 +1,8 @@
 # wp-memlog — Agent Infinite Memory System
 
-> **Status:** Implementation Complete v4.0 (Phase 1-2 Complete)
+> **Status:** Implementation Complete v5.1 (Phase 1-2 Complete, Bug Fixes Applied)
 > **Created:** 2026-04-24
-> **Updated:** 2026-04-27 (Implementation Complete)
+> **Updated:** 2026-04-29 (P0/P1 Bug Fixes + Documentation Update)
 
 
 ---
@@ -830,5 +830,6 @@ POST → WP save (always succeeds) → Immediate response
 | **v4.1** | **2026-04-27** | **Phase 3 search integration: category filter, hybrid search, excerpt fallback, CLI update** |
 | **v4.2** | **2026-04-27** | **Phase 4 multi-agent: collector_adapters, agents.yaml, collector_cli, Hermes memory/*.md support** |
 | **v5.0** | **2026-04-28** | **Verification complete + Collector, OpenRouter direct integration (Python), .env setup, improvement tasks(I1,I2) added** |
+| **v5.1** | **2026-04-29** | **P0/P1 bug fixes: idempotency logic (try/except/else), docker-compose env var names, backup.sh hardcoded password removal, collector.sh dry-run fix, collector_cli.py dead code removal, memlog-setup.php security (random password, no error_log), PyYAML dependency added. Documentation update.** |
 
 Detailed work log: See IMPLEMENTATION_LOG.md
