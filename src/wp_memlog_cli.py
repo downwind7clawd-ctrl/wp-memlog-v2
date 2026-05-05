@@ -93,7 +93,7 @@ def post_session(
         categories=[payload.category],
         enriched=False,
     )
-    print(f"Indexed to Meilisearch")
+    print("Indexed to Meilisearch")
 
     return post_id
 

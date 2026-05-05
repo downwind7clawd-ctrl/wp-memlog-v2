@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """wp-memlog collector CLI - Multi-agent session collector"""
 import argparse
-import json
 import os
 import subprocess
 import sys

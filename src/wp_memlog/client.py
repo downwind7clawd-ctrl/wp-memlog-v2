@@ -1,14 +1,13 @@
 """WordPress REST API client + Meilisearch search"""
 
 import os
-import json
 from dataclasses import dataclass
 from typing import Optional
 
 import httpx
 from meilisearch import Client as MeiliClient
+from tenacity import retry, stop_after_attempt, wait_exponential
 
-from .session import SessionPayload
 
 
 @dataclass
@@ -37,6 +36,7 @@ class WpClient:
         self.wp_url = wp_url.rstrip("/")
         self.auth = (username, app_password)
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def create_post(
         self,
         title: str,
@@ -56,8 +56,8 @@ class WpClient:
         if meta:
             data["meta"] = meta
 
-        with httpx.Client() as client:
-            resp = client.post(
+        with httpx.Client() as http:
+            resp = http.post(
                 f"{self.wp_url}/wp-json/wp/v2/posts",
                 auth=self.auth,
                 json=data,
@@ -66,10 +66,11 @@ class WpClient:
             resp.raise_for_status()
             return resp.json()["id"]
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def update_post(self, post_id: int, **kwargs) -> dict:
         """Update a post."""
-        with httpx.Client() as client:
-            resp = client.post(
+        with httpx.Client() as http:
+            resp = http.post(
                 f"{self.wp_url}/wp-json/wp/v2/posts/{post_id}",
                 auth=self.auth,
                 json=kwargs,
@@ -78,10 +79,11 @@ class WpClient:
             resp.raise_for_status()
             return resp.json()
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def get_post(self, post_id: int) -> dict:
         """Get a post."""
-        with httpx.Client() as client:
-            resp = client.get(
+        with httpx.Client() as http:
+            resp = http.get(
                 f"{self.wp_url}/wp-json/wp/v2/posts/{post_id}",
                 auth=self.auth,
                 timeout=30,
@@ -100,8 +102,8 @@ class WpClient:
         if status:
             params["status"] = status
 
-        with httpx.Client() as client:
-            resp = client.get(
+        with httpx.Client() as http:
+            resp = http.get(
                 f"{self.wp_url}/wp-json/wp/v2/posts",
                 auth=self.auth,
                 params=params,
@@ -116,6 +118,7 @@ class MeiliSearchClient:
         self.client = MeiliClient(url, api_key)
         self.index = self.client.index(index_name)
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def index_document(
         self,
         post_id: int,
@@ -140,10 +143,12 @@ class MeiliSearchClient:
         }
         self.index.add_documents([doc])
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def update_excerpt(self, post_id: int, excerpt: str):
         """Update excerpt after ClassifAI enrichment."""
         self.index.update_documents([{"id": str(post_id), "excerpt": excerpt, "_enriched": True}])
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def search(
         self,
         query: str,

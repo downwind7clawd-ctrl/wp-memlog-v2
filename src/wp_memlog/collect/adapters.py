@@ -1,11 +1,10 @@
 """Agent adapters for session collection"""
 from __future__ import annotations
-import json
 import os
 from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol, Optional
+from typing import Protocol
 
 @dataclass
 class SessionFile:

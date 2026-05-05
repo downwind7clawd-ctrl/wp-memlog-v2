@@ -1,5 +1,4 @@
 """Tests for wp-memlog package"""
-import pytest
 
 
 def test_session_payload_creation():

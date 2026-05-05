@@ -3,7 +3,6 @@ import os
 import yaml
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional
 
 @dataclass
 class AgentConfig:

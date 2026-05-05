@@ -51,5 +51,11 @@ class BgeM3Embedder:
 
 
 def get_embedding_dim(model_name: str = "BAAI/bge-m3") -> int:
-    """Get embedding dimension for a model."""
-    return 1024  # bge-m3 outputs 1024-dim embeddings
+    """Get embedding dimension for a model (dynamic lookup)."""
+    _dims = {
+        "BAAI/bge-m3": 1024,
+        "BAAI/bge-small-en": 384,
+        "BAAI/bge-base-en": 768,
+        "BAAI/bge-large-en": 1024,
+    }
+    return _dims.get(model_name, 1024)

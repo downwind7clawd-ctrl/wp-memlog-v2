@@ -2,7 +2,7 @@
 
 > 에이전트 세션 대화를 WordPress에 자동 저장하고, 의미 기반 검색으로 과거 맥락을 되찾습니다.
 
-![Version](https://img.shields.io/badge/version-5.1-blue)
+![Version](https://img.shields.io/badge/version-5.2-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Quick Start

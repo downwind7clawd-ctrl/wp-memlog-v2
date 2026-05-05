@@ -1,6 +1,4 @@
 """Tests for wp-memlog.collect"""
-import pytest
-from pathlib import Path
 
 
 def test_hermes_adapter_discovery(tmp_path):

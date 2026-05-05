@@ -1,4 +1,5 @@
 """wp-memlog main package"""
+__version__ = "5.2.0"
 
 from .session import SessionPayload, chunk_session, count_tokens
 from .client import WpClient, MeiliSearchClient, PostResult, SearchResult
