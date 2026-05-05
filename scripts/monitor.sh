@@ -10,7 +10,7 @@ PROJECT=${COMPOSE_PROJECT_NAME:-wp-memlog}
 THRESHOLD_MB=5325  # 5.2GB in MB
 LOG_FILE=/var/log/wp-memlog-monitor.log
 
-MEILI_CONTAINER="${PROJECT}-meilisearch-1"
+MEILI_CONTAINER="wp-memlog-meilisearch"
 
 if ! docker ps --filter "name=${MEILI_CONTAINER}" --filter "status=running" | grep -q "${MEILI_CONTAINER}"; then
     exit 0

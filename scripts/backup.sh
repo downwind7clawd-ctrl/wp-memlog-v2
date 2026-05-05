@@ -8,6 +8,8 @@ PROJECT="wp-memlog"
 BACKUP_DIR="${SCRIPT_DIR}/backup"
 DATE="$(date +%Y%m%d_%H%M%S)"
 
+source "${SCRIPT_DIR}/../.env"
+
 mkdir -p "${BACKUP_DIR}"
 
 echo "Backing up ${PROJECT}..."

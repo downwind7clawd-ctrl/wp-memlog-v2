@@ -1,4 +1,4 @@
-"""Tests for wp_melog.client"""
+"""Tests for wp_memlog.client"""
 import pytest
 from unittest.mock import patch, MagicMock
 

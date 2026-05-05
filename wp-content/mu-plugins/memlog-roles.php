@@ -5,6 +5,10 @@
  */
 
 add_action('wp_loaded', function() {
+    if (get_role('memlog_writer')) {
+        return;
+    }
+
     remove_role('memlog_writer');
     remove_role('memlog_reader');
 

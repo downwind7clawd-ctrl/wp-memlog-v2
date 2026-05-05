@@ -2,11 +2,10 @@
 """wp-memlog CLI - Agent session storage + search"""
 
 import argparse
+import json
 import os
 import subprocess
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from wp_memlog import (
     SessionPayload,
@@ -47,9 +46,8 @@ def post_session(
         title=title or f"[{agent}] {date} Session",
     )
 
-# Check for existing post with same idem_key
+    # Check for existing post with same idem_key
     post_id = None
-    import json
     try:
         existing = wp("post", "list", "--meta_key=_memlog_idem", f"--meta_value={payload.idem_key}", "--fields=ID", "--format=json")
         if existing:

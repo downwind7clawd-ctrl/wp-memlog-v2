@@ -3,7 +3,6 @@ services:
     image: getmeili/meilisearch:v1.12
     container_name: wp-memlog-meilisearch
     restart: unless-stopped
-    user: "${UID:-1000}:${GID:-1000}"
     deploy:
       resources:
         limits:
@@ -16,7 +15,7 @@ services:
       - MEILI_NO_ANALYTICS=${MEILI_NO_ANALYTICS:-true}
     volumes:
       - meili_data:/meili_data
-      - hf_cache:/root/.cache/huggingface
+      - hf_cache:/tmp/huggingface_cache
     ports:
       - "127.0.0.1:7700:7700"
     healthcheck:
@@ -59,7 +58,6 @@ services:
     image: mariadb:11.4
     container_name: wp-memlog-db
     restart: unless-stopped
-    user: "${UID:-1000}:${GID:-1000}"
     deploy:
       resources:
         limits:

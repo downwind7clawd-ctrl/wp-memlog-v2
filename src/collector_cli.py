@@ -4,9 +4,6 @@ import argparse
 import os
 import subprocess
 import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from wp_memlog.collect import (
     HermesAdapter,
@@ -44,7 +41,7 @@ def collect_agent(
     config = load_agents_config(config_path)
     agent_cfg = config.agents.get(agent_name)
 
-    if not agent_name:
+    if not agent_cfg:
         print(f"Unknown agent: {agent_name}")
         return 1
 

@@ -3,10 +3,16 @@
 
 PROJECT=${COMPOSE_PROJECT_NAME:-wp-memlog}
 
+declare -A CONTAINER_MAP=(
+    [meilisearch]="wp-memlog-meilisearch"
+    [wordpress]="wp-memlog-wp"
+    [db]="wp-memlog-db"
+)
+
 check_service() {
     local name=$1
-    local container="${PROJECT}-${name}-1"
-    
+    local container="${CONTAINER_MAP[$name]}"
+
     if docker ps --filter "name=${container}" --filter "status=running" | grep -q "${container}"; then
         echo "✓ ${name}: running"
         return 0
