@@ -1,8 +1,8 @@
 # wp-memlog — Agent Infinite Memory System
 
-> **Status:** v5.2 — Phase 1-5 완료, 원커맨드 설치 + 문서화 완료
+> **Status:** v5.2.0 — Phase 1-5 완료, 테스트 + 보안 강화 완료
 > **Created:** 2026-04-24
-> **Updated:** 2026-05-05 (setup.sh, doctor.sh, Dockerfile, README 개선)
+> **Updated:** 2026-05-06 (P1/P2 이슈 수정, 단위 테스트 추가, 보안 강화)
 
 ---
 
@@ -289,5 +289,6 @@ POST → WP 저장 (항상 성공) → 즉시 응답
 | v5.0 | 2026-04-28 | 검증 완료 + OpenRouter 직접 통합 |
 | v5.1 | 2026-04-29 | P0/P1 버그 수정 (멱등성, docker-compose env var, backup.sh 보안) |
 | **v5.2** | **2026-05-05** | **setup.sh (원커맨드 설치), doctor.sh (자동 점검), Dockerfile, README 대폭 개선** |
+| **v5.2.0** | **2026-05-06** | **P1/P2 이슈 수정, 단위 테스트 20개 추가, tenacity retry, 보안 강화** |
 
 상세 작업 로그: IMPLEMENTATION_LOG.md
