@@ -164,8 +164,9 @@ class MeiliSearchClient:
 
         params = {
             "limit": limit,
-            "filter": filters if filters else None,
         }
+        if filters:
+            params["filter"] = filters
 
         results = self.index.search(query, params)
         out = []

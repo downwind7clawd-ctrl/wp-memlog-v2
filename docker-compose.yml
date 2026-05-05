@@ -26,7 +26,7 @@ services:
       start_period: 30s
 
   wordpress:
-    image: wordpress:6.7
+    build: .
     container_name: wp-memlog-wp
     restart: unless-stopped
     depends_on:
@@ -45,12 +45,13 @@ services:
       - wp_data:/var/www/html
     ports:
       - "127.0.0.1:8080:80"
+    command: apache2-foreground
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 60s
 
   db:
     image: mariadb:11.4
