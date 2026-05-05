@@ -4,6 +4,10 @@
  * Description: Create memlog users with application passwords
  */
 
+if (get_option('memlog_setup_done')) {
+    return;
+}
+
 function memlog_create_users() {
     // Create writer user
     $writer_username = 'memlog-writer';

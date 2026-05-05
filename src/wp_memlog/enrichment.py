@@ -6,8 +6,15 @@ from dataclasses import dataclass
 from typing import Optional
 
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+
+def _get_openrouter_key() -> str:
+    """Lazily read OPENROUTER_API_KEY from environment."""
+    key = os.getenv("OPENROUTER_API_KEY")
+    if not key:
+        raise ValueError("OPENROUTER_API_KEY not set")
+    return key
 DEFAULT_MODEL = "openai/gpt-oss-120b:free"
 
 
@@ -21,8 +28,7 @@ class EnrichmentResult:
 
 async def generate_excerpt(content: str, model: str = DEFAULT_MODEL) -> str:
     """Generate excerpt/summary using OpenRouter."""
-    if not OPENROUTER_API_KEY:
-        raise ValueError("OPENROUTER_API_KEY not set")
+    api_key = _get_openrouter_key()
 
     prompt = f"""Summarize the following message in 2-3 sentences (max 100 words).
 Focus on key decisions, outcomes, and any outstanding tasks.
@@ -35,7 +41,7 @@ Message:
         response = await client.post(
             OPENROUTER_URL,
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "http://127.0.0.1:8080",
                 "X-Title": "wp-memlog"
@@ -53,8 +59,7 @@ Message:
 
 async def extract_tags(content: str, model: str = DEFAULT_MODEL) -> list[str]:
     """Extract relevant tags from content using OpenRouter."""
-    if not OPENROUTER_API_KEY:
-        raise ValueError("OPENROUTER_API_KEY not set")
+    api_key = _get_openrouter_key()
 
     prompt = f"""Extract 3-5 relevant keywords/tags from the following content.
 Return them as a comma-separated list, no explanation.
@@ -67,7 +72,7 @@ Content:
         response = await client.post(
             OPENROUTER_URL,
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "http://127.0.0.1:8080",
                 "X-Title": "wp-memlog"
@@ -97,8 +102,7 @@ async def enrich_session(content: str, title: str = "", model: str = DEFAULT_MOD
 
 def generate_excerpt_sync(content: str, model: str = DEFAULT_MODEL) -> str:
     """Synchronous version of generate_excerpt."""
-    if not OPENROUTER_API_KEY:
-        raise ValueError("OPENROUTER_API_KEY not set")
+    api_key = _get_openrouter_key()
 
     prompt = f"""Summarize the following message in 2-3 sentences (max 100 words).
 Focus on key decisions, outcomes, and any outstanding tasks.
@@ -111,7 +115,7 @@ Message:
         response = client.post(
             OPENROUTER_URL,
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "http://127.0.0.1:8080",
                 "X-Title": "wp-memlog"

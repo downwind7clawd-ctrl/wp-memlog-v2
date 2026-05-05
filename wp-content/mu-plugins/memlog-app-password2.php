@@ -35,13 +35,12 @@ function memlog_create_app_passwords() {
             ];
             
             update_user_meta($user->ID, 'application_passwords', $app_passwords);
-            error_log("Created $username app password: $password (hashed: $hashed)");
+            error_log("Created $username app password");
         }
     }
 }
 
-if (!wp_next_scheduled('memlog_create_app_passwords')) {
-    wp_schedule_event(time(), 'daily', 'memlog_create_app_passwords');
+if (!get_option('memlog_app_passwords_created')) {
+    memlog_create_app_passwords();
+    update_option('memlog_app_passwords_created', true);
 }
-
-memlog_create_app_passwords();

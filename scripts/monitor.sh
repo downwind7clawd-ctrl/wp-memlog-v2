@@ -4,7 +4,8 @@
 
 set -e
 
-source /home/david/nas_1tb/dev/wp-memlog/.env
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/../.env"
 
 PROJECT=${COMPOSE_PROJECT_NAME:-wp-memlog}
 THRESHOLD_MB=5325  # 5.2GB in MB

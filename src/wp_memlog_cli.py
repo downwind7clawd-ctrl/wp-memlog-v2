@@ -71,11 +71,16 @@ def post_session(
         if "Created post" in output:
             post_id = int(output.split()[-1].rstrip("."))
         else:
-            post_id = None
+            print("ERROR: Failed to create post", file=sys.stderr)
+            return None
         print(f"Created post {post_id}")
 
         # Add meta
         wp("post", "meta", "update", str(post_id), "_memlog_idem", payload.idem_key)
+
+    if not post_id:
+        print("ERROR: No post_id available", file=sys.stderr)
+        return None
 
     # Index to Meilisearch
     embedder = None

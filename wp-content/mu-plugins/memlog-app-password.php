@@ -4,6 +4,10 @@
  * Description: Add application passwords for memlog users via REST API
  */
 
+if (get_option('memlog_setup_done')) {
+    return;
+}
+
 add_action('rest_api_init', function() {
     register_rest_route('memlog/v1', '/setup', [
         'methods' => 'POST',
