@@ -137,10 +137,10 @@ WP_ADMIN_PASSWORD=${wp_admin}
 # WP-MEMLOG COLLECTOR
 # ============================================
 WP_MEMLOG_WP_URL=http://127.0.0.1:8080
-WP_MEMLOG_WP_USER=admin
+WP_MEMLOG_WP_USER=${WP_MEMLOG_WP_USER:-admin}
 WP_MEMLOG_WP_APPPW=${wp_admin}
 WP_MEMLOG_MEILI_URL=http://127.0.0.1:7700
-WP_MEMLOG_MEILI_KEY=${meili_search}
+WP_MEMLOG_MEILI_KEY=${meili_master}
 
 # ============================================
 # OPENROUTER (optional — for AI summarization)

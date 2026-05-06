@@ -176,6 +176,45 @@ else
     warn "No backup directory — run ./scripts/backup.sh"
 fi
 
+# ── Step 7: CLI Smoke Test ──────────────────────────────
+echo -e "${BOLD}${CYAN}Step 7: CLI Smoke Test${NC}"
+
+if [[ -d "$PROJECT_DIR/.venv" ]]; then
+    # Test Python package import
+    if "$PROJECT_DIR/.venv/bin/python" -c "from wp_memlog.client import WpClient, MeiliSearchClient" 2>/dev/null; then
+        ok "Python package import"
+    else
+        fail "Python package import"
+    fi
+
+    # Test CLI help
+    if "$PROJECT_DIR/.venv/bin/python" "$PROJECT_DIR/src/wp_memlog_cli.py" --help &>/dev/null; then
+        ok "CLI --help"
+    else
+        fail "CLI --help"
+    fi
+
+    # Test search (non-indexing, should work with search key)
+    local meili_url meili_key
+    meili_url=$(grep WP_MEMLOG_MEILI_URL "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo "http://127.0.0.1:7700")
+    meili_key=$(grep WP_MEMLOG_MEILI_KEY "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo "")
+    if [[ -n "$meili_key" ]]; then
+        if "$PROJECT_DIR/.venv/bin/python" -c "
+from wp_memlog.client import MeiliSearchClient
+c = MeiliSearchClient('$meili_url', '$meili_key')
+r = c.search('test', limit=1)
+" 2>/dev/null; then
+            ok "Meilisearch search"
+        else
+            warn "Meilisearch search (may need indexing)"
+        fi
+    else
+        warn "Meilisearch search (no key in .env)"
+    fi
+else
+    warn "Python venv not found — skipping CLI tests"
+fi
+
 # ── Summary ────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

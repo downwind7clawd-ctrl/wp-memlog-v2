@@ -79,10 +79,12 @@ class TestWpClient:
 
     def test_create_post_http_error(self, httpx_mock):
         """Test that HTTP errors are raised"""
-        httpx_mock.add_response(
-            url="http://127.0.0.1:8080/wp-json/wp/v2/posts",
-            status_code=401,
-        )
+        # Register multiple responses for tenacity retry (3 attempts)
+        for _ in range(3):
+            httpx_mock.add_response(
+                url="http://127.0.0.1:8080/wp-json/wp/v2/posts",
+                status_code=401,
+            )
         client = WpClient("http://127.0.0.1:8080", "admin", "password")
         with pytest.raises(Exception):
             client.create_post("Test", "Content")
