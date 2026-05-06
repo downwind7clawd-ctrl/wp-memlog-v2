@@ -2,7 +2,7 @@
 
 > 에이전트 세션 대화를 WordPress에 자동 저장하고, 의미 기반 검색으로 과거 맥락을 되찾습니다.
 
-![Version](https://img.shields.io/badge/version-5.2.0-blue)
+![Version](https://img.shields.io/badge/version-5.3.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Quick Start
@@ -246,6 +246,16 @@ wp-memlog/
 - [x] Phase 4: 멀티에이전트 수집기
 - [x] Phase 5: 원커맨드 설치, 문서화, 자동 점검
 - [ ] Phase 6: 대시보드, Ollama 통합, 공개 저장소
+
+## 보안
+
+- **시크릿 관리**: 모든 API 키/비밀번호는 환경변수(`.env`)에서 읽어옴. 하드코딩 없음
+- **ClassifAI 인증**: `current_user_can('edit_posts')` capability 검사 적용
+- **명령어 인젝션 방지**: WP-CLI 호출 시 `shlex.quote()`로 인자 이스케이프
+- **DB 덤프 보안**: `mysqldump --defaults-extra-file` 사용 (프로세스 목록 노출 방지)
+- **경로 탐색 방지**: 세션 파일 경로 `os.path.realpath()` 검증
+- **최소 권한 원칙**: `memlog_writer` 역할에서 `edit_others_posts` 제거
+- **Git 이력 보호**: API 키가 이력에 포함된 경우 `git filter-branch`로 즉시 제거
 
 ## 라이선스
 
