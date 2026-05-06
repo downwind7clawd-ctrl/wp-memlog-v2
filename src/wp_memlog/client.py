@@ -45,7 +45,11 @@ class WpClient:
 
     def _wp_cli_run(self, *args) -> str:
         """Run a WP-CLI command and return stdout. Raises on failure."""
-        cmd = [self._wp_cli, "--allow-root", "--path=/var/www/html", *args]
+        if self._wp_cli == "wp":
+            wp = "docker exec wp-memlog-wordpress-1 wp"
+        else:
+            wp = self._wp_cli
+        cmd = [*wp.split(), "--allow-root", "--path=/var/www/html", *args]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         if result.returncode != 0:
             raise RuntimeError(f"WP-CLI failed: {result.stderr.strip()}")
