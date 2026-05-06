@@ -25,13 +25,14 @@ fail() { echo -e "  ${RED}✗${NC} $1"; FAIL=$((FAIL + 1)); }
 warn() { echo -e "  ${YELLOW}⚠${NC} $1"; WARN=$((WARN + 1)); }
 info() { echo -e "  ${BLUE}ℹ${NC} $1"; }
 
-WP="docker exec wp-memlog-wp wp --allow-root --path=/var/www/html"
+PROJECT="${COMPOSE_PROJECT_NAME:-wp-memlog}"
+WP="docker exec ${PROJECT}_wordpress_1 wp --allow-root --path=/var/www/html"
 
 echo -e "\n${BOLD}${CYAN}━━━ wp-memlog Doctor ━━━${NC}\n"
 
 # ── 1. Docker containers ───────────────────────────────
 echo -e "${BOLD}[1/8] Docker Containers${NC}"
-declare -A CNAME=( [meilisearch]="wp-memlog-meilisearch" [wordpress]="wp-memlog-wp" [db]="wp-memlog-db" )
+declare -A CNAME=( [meilisearch]="${PROJECT}_meilisearch_1" [wordpress]="${PROJECT}_wordpress_1" [db]="${PROJECT}_db_1" )
 for svc in meilisearch wordpress db; do
     local_name="${CNAME[$svc]}"
     status=$(docker inspect --format='{{.State.Health.Status}}' "$local_name" 2>/dev/null || echo "not found")
@@ -160,10 +161,10 @@ fi
 
 # ── 7. Disk & Memory ───────────────────────────────────
 echo -e "\n${BOLD}[7/8] Resources${NC}"
-meili_mem=$(docker stats wp-memlog-meilisearch --no-stream --format "{{.MemUsage}}" 2>/dev/null | awk '{print $1}' || echo "?")
+meili_mem=$(docker stats "${PROJECT}_meilisearch_1" --no-stream --format "{{.MemUsage}}" 2>/dev/null | awk '{print $1}' || echo "?")
 info "  Meilisearch memory: $meili_mem"
 
-wp_mem=$(docker stats wp-memlog-wp --no-stream --format "{{.MemUsage}}" 2>/dev/null | awk '{print $1}' || echo "?")
+wp_mem=$(docker stats "${PROJECT}_wordpress_1" --no-stream --format "{{.MemUsage}}" 2>/dev/null | awk '{print $1}' || echo "?")
 info "  WordPress memory: $wp_mem"
 
 disk_pct=$(df "$PROJECT_DIR" | tail -1 | awk '{print $5}')

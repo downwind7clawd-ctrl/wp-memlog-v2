@@ -1,8 +1,8 @@
 # wp-memlog — Agent Infinite Memory System
 
-> **Status:** v5.3.0 — Phase 1-5 완료, 보안 강화 + 품질 개선 완료
+> **Status:** v6.0.1 — 안정화 패치 (container_name 제거, follow_redirects, category slug→ID 변환)
 > **Created:** 2026-04-24
-> **Updated:** 2026-05-06 (보안 감사 수정, 최소 권한 적용, 문서 업데이트)
+> **Updated:** 2026-05-06 (Round 1 테스트 보고서 기반 보강)
 
 ---
 
@@ -295,6 +295,7 @@ POST → WP 저장 (항상 성공) → 즉시 응답
 | **v5.2.0** | **2026-05-06** | **P1/P2 이슈 수정, 단위 테스트 20개 추가, tenacity retry, 보안 강화** |
 | **v5.3.0** | **2026-05-06** | **보안 감사 수정 (P0/P1/P2), 최소 권한 적용, Meilisearch 키 분리, 문서 업데이트** |
 | **v6.0.0** | **2026-05-06** | **MCP 서버, 에이전트명 하드코딩 해제, 다국어 README, 마케팅 개선** |
+| **v6.0.1** | **2026-05-06** | **Round 1 테스트 보고서 기반 보강: container_name 제거, follow_redirects, category slug→ID, 스크립트 동적 컨테이너명** |
 
 상세 작업 로그: IMPLEMENTATION_LOG.md
 

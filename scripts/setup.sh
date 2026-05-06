@@ -18,6 +18,13 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="$PROJECT_DIR/.env"
 ENV_EXAMPLE="$PROJECT_DIR/.env.example"
 
+# ── Container names (derived from COMPOSE_PROJECT_NAME) ──
+PROJECT="$(grep ^COMPOSE_PROJECT_NAME "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')"
+PROJECT="${PROJECT:-wp-memlog}"
+CT_MEILI="${PROJECT}_meilisearch_1"
+CT_WP="${PROJECT}_wordpress_1"
+CT_DB="${PROJECT}_db_1"
+
 # ── Helpers ─────────────────────────────────────────────
 log_info()  { echo -e "${BLUE}[INFO]${NC}  $*"; }
 log_ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
@@ -181,7 +188,7 @@ setup_docker() {
         local all_healthy=true
         for svc in meilisearch wordpress db; do
             local status
-            status=$(docker inspect --format='{{.State.Health.Status}}' "wp-memlog-${svc}" 2>/dev/null || echo "starting")
+            status=$(docker inspect --format='{{.State.Health.Status}}' "${PROJECT}_${svc}_1" 2>/dev/null || echo "starting")
             if [[ "$status" != "healthy" ]]; then
                 all_healthy=false
                 break
@@ -197,12 +204,12 @@ setup_docker() {
     # Verify
     for svc in meilisearch wordpress db; do
         local status
-        status=$(docker inspect --format='{{.State.Health.Status}}' "wp-memlog-${svc}" 2>/dev/null || echo "unknown")
+        status=$(docker inspect --format='{{.State.Health.Status}}' "${PROJECT}_${svc}_1" 2>/dev/null || echo "unknown")
         if [[ "$status" == "healthy" ]]; then
             log_ok "  $svc: healthy"
         else
             log_error "  $svc: $status (timeout)"
-            die "Container $svc failed to become healthy. Check: docker logs wp-memlog-${svc}"
+            die "Container $svc failed to become healthy. Check: docker logs ${PROJECT}_${svc}_1"
         fi
     done
 }
@@ -211,7 +218,7 @@ setup_docker() {
 setup_wordpress() {
     log_step "Step 3: WordPress installation"
 
-    local wp="docker exec wp-memlog-wp wp --allow-root"
+    local wp="docker exec ${CT_WP} wp --allow-root"
 
     # Check if already installed
     if $wp core is-installed 2>/dev/null; then
@@ -302,9 +309,9 @@ print(' '.join(enabled))
     # Install mu-plugins
     log_info "Installing must-use plugins..."
     local mu_dir="/var/www/html/wp-content/mu-plugins"
-    docker cp "$PROJECT_DIR/wp-content/mu-plugins/memlog-roles.php" "wp-memlog-wp:${mu_dir}/" 2>/dev/null
-    docker cp "$PROJECT_DIR/wp-content/mu-plugins/memlog-classifai-auto.php" "wp-memlog-wp:${mu_dir}/" 2>/dev/null
-    docker cp "$PROJECT_DIR/wp-content/mu-plugins/memlog-openrouter.php" "wp-memlog-wp:${mu_dir}/" 2>/dev/null
+    docker cp "$PROJECT_DIR/wp-content/mu-plugins/memlog-roles.php" "${CT_WP}:${mu_dir}/" 2>/dev/null
+    docker cp "$PROJECT_DIR/wp-content/mu-plugins/memlog-classifai-auto.php" "${CT_WP}:${mu_dir}/" 2>/dev/null
+    docker cp "$PROJECT_DIR/wp-content/mu-plugins/memlog-openrouter.php" "${CT_WP}:${mu_dir}/" 2>/dev/null
     log_ok "mu-plugins installed"
 }
 
@@ -416,7 +423,7 @@ run_verification() {
     log_step "Step 6: Verification"
 
     local pass=0 fail=0 total=0
-    local wp="docker exec wp-memlog-wp wp --allow-root"
+    local wp="docker exec ${CT_WP} wp --allow-root"
 
     check() {
         local name=$1; local cmd=$2
@@ -432,7 +439,7 @@ run_verification() {
 
     echo ""
     check "Docker containers healthy" \
-        "docker inspect --format='{{.State.Health.Status}}' wp-memlog-wp | grep -q healthy"
+        "docker inspect --format='{{.State.Health.Status}}' ${CT_WP} | grep -q healthy"
     check "WordPress installed" \
         "$wp core is-installed"
     check "Categories exist (deus)" \

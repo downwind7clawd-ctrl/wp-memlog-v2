@@ -132,19 +132,22 @@ async def _tool_post(args: dict) -> list[TextContent]:
         title=title,
     )
 
-    # Create WordPress post
+    # Resolve category slug → WP category ID
     wp = _get_wp_client()
-    result = wp.create_post(
+    category_id = wp.resolve_category(payload.category)
+
+    # Create WordPress post
+    post_id = wp.create_post(
         title=payload.title,
         content=payload.content,
         status="private",
-        category=payload.category,
+        category=category_id,
     )
 
     # Index to Meilisearch
     meili = _get_meili_client()
     meili.index_document(
-        post_id=result.post_id,
+        post_id=post_id,
         title=payload.title,
         content=payload.content,
         categories=[payload.category],
@@ -153,11 +156,11 @@ async def _tool_post(args: dict) -> list[TextContent]:
     )
 
     output = {
-        "post_id": result.post_id,
+        "post_id": post_id,
         "title": payload.title,
         "category": payload.category,
         "indexed": True,
-        "url": f"{os.getenv('WP_MEMLOG_WP_URL', 'http://127.0.0.1:8080')}/?p={result.post_id}",
+        "url": f"{os.getenv('WP_MEMLOG_WP_URL', 'http://127.0.0.1:8080')}/?p={post_id}",
     }
     return [TextContent(type="text", text=json.dumps(output, ensure_ascii=False, indent=2))]
 

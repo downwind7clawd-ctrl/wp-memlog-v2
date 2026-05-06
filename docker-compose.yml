@@ -1,7 +1,6 @@
 services:
   meilisearch:
     image: getmeili/meilisearch:v1.12
-    container_name: wp-memlog-meilisearch
     restart: unless-stopped
     deploy:
       resources:
@@ -27,7 +26,6 @@ services:
 
   wordpress:
     build: .
-    container_name: wp-memlog-wp
     restart: unless-stopped
     user: "${UID:-1000}:${GID:-1000}"
     depends_on:
@@ -56,7 +54,6 @@ services:
 
   db:
     image: mariadb:11.4
-    container_name: wp-memlog-db
     restart: unless-stopped
     deploy:
       resources:

@@ -4,9 +4,9 @@
 PROJECT=${COMPOSE_PROJECT_NAME:-wp-memlog}
 
 declare -A CONTAINER_MAP=(
-    [meilisearch]="wp-memlog-meilisearch"
-    [wordpress]="wp-memlog-wp"
-    [db]="wp-memlog-db"
+    [meilisearch]="${PROJECT}_meilisearch_1"
+    [wordpress]="${PROJECT}_wordpress_1"
+    [db]="${PROJECT}_db_1"
 )
 
 check_service() {

@@ -414,3 +414,28 @@ No issues found
 - 에이전트명: `agents.yaml`이 소스 오브 트루스, 기존 WP 카테고리 slug 유지
 - 샌드박스: 기존 인프라 재사용, Meilisearch 인덱스만 분리
 - 브랜치: `feature/v6` → 완료 후 `master` merge + tag `v6.0.0`
+
+---
+
+## 2026-05-06 v6.0.1 — Round 1 테스트 보고서 기반 보강
+
+**Trigger:** `/tmp/sandbox/wp-memlog-v2/TEST_REPORT_v6.0.0_Round1.md` 리뷰
+
+**목표:** 테스트 환경에서 발견된 설치/운영 이슈 수정
+
+### 수정 내역
+
+| # | 이슈 | 수정 파일 | 해결 방법 |
+|---|------|-----------|-----------|
+| 1 | `httpx.Client()` 301 리다이렉트 | `src/wp_memlog/client.py` | 모든 `httpx.Client()` → `httpx.Client(follow_redirects=True)` |
+| 2 | category slug→ID 미변환 | `src/wp_memlog/mcp_server.py`, `src/wp_memlog/client.py` | `WpClient.resolve_category()` 추가, `_tool_post`에서 ID 변환 |
+| 3 | `container_name` 하드코딩 충돌 | `docker-compose.yml` | `container_name` 제거 → `COMPOSE_PROJECT_NAME` 기반 자동 네이밍 |
+| 4 | 스크립트 컨테이너명 하드코딩 | `scripts/setup.sh`, `doctor.sh`, `backup.sh`, `monitor.sh`, `healthcheck.sh` | `${PROJECT}_${svc}_1` 동적 참조 |
+| 5 | `.env.example` prefix 불일치 | `.env.example` | `WP_MEMLOG_WP_USER` → `WP_MEMLOG_WP_USERNAME`, `WP_MEMLOG_WP_APPPW` → `WP_MEMLOG_WP_APP_PASSWORD` |
+
+### 검증 결과
+
+- ✅ pytest: 30 passed
+- ✅ ruff: no issues
+- ✅ 시크릿 스캔: clean
+- ✅ 9 files changed, +68/-41

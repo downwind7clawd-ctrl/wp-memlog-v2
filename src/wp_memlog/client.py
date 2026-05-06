@@ -56,7 +56,7 @@ class WpClient:
         if meta:
             data["meta"] = meta
 
-        with httpx.Client() as http:
+        with httpx.Client(follow_redirects=True) as http:
             resp = http.post(
                 f"{self.wp_url}/wp-json/wp/v2/posts",
                 auth=self.auth,
@@ -69,7 +69,7 @@ class WpClient:
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def update_post(self, post_id: int, **kwargs) -> dict:
         """Update a post."""
-        with httpx.Client() as http:
+        with httpx.Client(follow_redirects=True) as http:
             resp = http.post(
                 f"{self.wp_url}/wp-json/wp/v2/posts/{post_id}",
                 auth=self.auth,
@@ -82,7 +82,7 @@ class WpClient:
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def get_post(self, post_id: int) -> dict:
         """Get a post."""
-        with httpx.Client() as http:
+        with httpx.Client(follow_redirects=True) as http:
             resp = http.get(
                 f"{self.wp_url}/wp-json/wp/v2/posts/{post_id}",
                 auth=self.auth,
@@ -90,6 +90,21 @@ class WpClient:
             )
             resp.raise_for_status()
             return resp.json()
+
+    def resolve_category(self, slug: str) -> int | None:
+        """Resolve a category slug to its WP category ID. Returns None if not found."""
+        with httpx.Client(follow_redirects=True) as http:
+            resp = http.get(
+                f"{self.wp_url}/wp-json/wp/v2/categories",
+                auth=self.auth,
+                params={"slug": slug, "per_page": 1},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            cats = resp.json()
+            if cats:
+                return cats[0]["id"]
+            return None
 
     def list_posts(
         self,
@@ -102,7 +117,7 @@ class WpClient:
         if status:
             params["status"] = status
 
-        with httpx.Client() as http:
+        with httpx.Client(follow_redirects=True) as http:
             resp = http.get(
                 f"{self.wp_url}/wp-json/wp/v2/posts",
                 auth=self.auth,
