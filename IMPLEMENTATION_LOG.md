@@ -518,3 +518,22 @@ No issues found
 - ✅ pytest: **49 passed** (+8 MCP, -2 테스트 구조 변경)
 - ✅ ruff: no issues
 - ✅ 시크릿 스캔: clean
+---
+
+## 2026-05-06 v6.0.5 — Round 5: WordPress healthy 달성
+
+**Trigger:** Round 5 리포트 — docker-compose user 오버라이드가 WordPress entrypoint tar 추출을 방해
+
+**근본 원인:** `user: "${UID:-1000}:${GID:-1000}"` → non-root 실행 → tar 권한 오류 → 500
+
+### 수정 내역
+
+| # | 이슈 | 파일 | 해결 |
+|---|------|------|------|
+| 1 | user 오버라이드 | `docker-compose.yml` | user 라인 **제거** |
+| 2 | Dockerfile chown 불가 | `Dockerfile` | 빌드 시 미존재 디렉터리 chown **제거** |
+| 3 | healthcheck 302 실패 | `docker-compose.yml` | wget → curl grep 200\|301\|302 |
+
+### 결과: 3/3 services healthy
+
+- ✅ pytest: 49 passed | ruff: clean | secret: clean
