@@ -6,6 +6,14 @@ import shlex
 import subprocess
 import sys
 
+# Auto-load .env from project root
+try:
+    from dotenv import load_dotenv
+    _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    load_dotenv(_env_path)
+except ImportError:
+    pass
+
 from wp_memlog.collect import (
     HermesAdapter,
     OpenCodeAdapter,
@@ -15,7 +23,7 @@ from wp_memlog.collect import (
 from wp_memlog.collect.config import load_agents_config
 from wp_memlog import MeiliSearchClient, SessionPayload
 
-WP_CLI = os.getenv("WP_CLI", "docker exec wp-memlog-wp wp --allow-root")
+WP_CLI = os.getenv("WP_CLI", "docker exec wp-memlog-wordpress-1 wp --allow-root")
 
 
 def wp_cli(*args):

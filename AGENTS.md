@@ -102,3 +102,25 @@ wp-memlog/
 # 수집
 .venv/bin/python3 src/collector_cli.py --config config/agents.yaml collect hermes
 ```
+
+---
+
+## 📋 컨테이너 네이밍 규칙
+
+Docker Compose V2는 컨테이너 이름에 **하이픈(`-`)** 을 사용합니다.
+언더스코어(`_`)를 사용하면 컨테이너를 찾을 수 없어 스크립트가 실패합니다.
+
+**올바른 패턴:**
+```
+${COMPOSE_PROJECT_NAME}-${service_name}-1
+# 예: wp-memlog-wordpress-1, wp-memlog-db-1, wp-memlog-meilisearch-1
+```
+
+**잘못된 패턴:**
+```
+${COMPOSE_PROJECT_NAME}_${service_name}_1  ← 언더스코어 사용 금지
+```
+
+- `scripts/setup.sh`는 `${PROJECT}-${svc}-1` 패턴 사용
+- `src/wp_memlog_cli.py`, `src/collector_cli.py`는 `wp-memlog-wordpress-1` 하드코딩
+- 새 스크립트 작성 시 반드시 하이픈 패턴 사용

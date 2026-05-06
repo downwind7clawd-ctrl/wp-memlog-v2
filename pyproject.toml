@@ -1,6 +1,6 @@
 [project]
 name = "wp-memlog"
-version = "6.0.5"
+version = "6.0.6"
 description = "에이전트 무한 기억력 시스템 - 세션 전문 자동 저장 + Meilisearch 검색"
 readme = "README.md"
 requires-python = ">=3.10"

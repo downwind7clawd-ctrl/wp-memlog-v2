@@ -19,11 +19,11 @@ ENV_FILE="$PROJECT_DIR/.env"
 ENV_EXAMPLE="$PROJECT_DIR/.env.example"
 
 # ── Container names (derived from COMPOSE_PROJECT_NAME) ──
-PROJECT="$(grep ^COMPOSE_PROJECT_NAME "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')"
+PROJECT="$(grep ^COMPOSE_PROJECT_NAME "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')" || true
 PROJECT="${PROJECT:-wp-memlog}"
-CT_MEILI="${PROJECT}_meilisearch_1"
-CT_WP="${PROJECT}_wordpress_1"
-CT_DB="${PROJECT}_db_1"
+CT_MEILI="${PROJECT}-meilisearch-1"
+CT_WP="${PROJECT}-wordpress-1"
+CT_DB="${PROJECT}-db-1"
 
 # ── Helpers ─────────────────────────────────────────────
 log_info()  { echo -e "${BLUE}[INFO]${NC}  $*"; }
@@ -188,7 +188,7 @@ setup_docker() {
         local all_healthy=true
         for svc in meilisearch wordpress db; do
             local status
-            status=$(docker inspect --format='{{.State.Health.Status}}' "${PROJECT}_${svc}_1" 2>/dev/null || echo "starting")
+            status=$(docker inspect --format='{{.State.Health.Status}}' "${PROJECT}-${svc}-1" 2>/dev/null || echo "starting")
             if [[ "$status" != "healthy" ]]; then
                 all_healthy=false
                 break
@@ -204,12 +204,12 @@ setup_docker() {
     # Verify
     for svc in meilisearch wordpress db; do
         local status
-        status=$(docker inspect --format='{{.State.Health.Status}}' "${PROJECT}_${svc}_1" 2>/dev/null || echo "unknown")
+        status=$(docker inspect --format='{{.State.Health.Status}}' "${PROJECT}-${svc}-1" 2>/dev/null || echo "unknown")
         if [[ "$status" == "healthy" ]]; then
             log_ok "  $svc: healthy"
         else
             log_error "  $svc: $status (timeout)"
-            die "Container $svc failed to become healthy. Check: docker logs ${PROJECT}_${svc}_1"
+            die "Container $svc failed to become healthy. Check: docker logs ${PROJECT}-${svc}-1"
         fi
     done
 }
@@ -309,6 +309,7 @@ print(' '.join(enabled))
     # Install mu-plugins
     log_info "Installing must-use plugins..."
     local mu_dir="/var/www/html/wp-content/mu-plugins"
+    docker exec "${CT_WP}" mkdir -p "$mu_dir"
     docker cp "$PROJECT_DIR/wp-content/mu-plugins/memlog-roles.php" "${CT_WP}:${mu_dir}/" 2>/dev/null
     docker cp "$PROJECT_DIR/wp-content/mu-plugins/memlog-classifai-auto.php" "${CT_WP}:${mu_dir}/" 2>/dev/null
     docker cp "$PROJECT_DIR/wp-content/mu-plugins/memlog-openrouter.php" "${CT_WP}:${mu_dir}/" 2>/dev/null

@@ -1,6 +1,6 @@
 # wp-memlog — Agent Infinite Memory System
 
-> **Status:** v6.0.5 — WordPress healthy 달성, 전 서비스 정상 운영 확인
+> **Status:** v6.0.6 — 설치 버그 수정, 프로덕션 배포 완료
 > **Created:** 2026-04-24
 > **Updated:** 2026-05-06 (Round 4 테스트 보고서 기반 보강)
 
@@ -300,6 +300,7 @@ POST → WP 저장 (항상 성공) → 즉시 응답
 | **v6.0.3** | **2026-05-06** | **Round 3 보고서 기반: embedder/enrichment/indexer 테스트 20개 추가, Dockerfile 버전 pinning, .env.example 보강** |
 | **v6.0.4** | **2026-05-06** | **Round 4 보고서 기반: MCP 테스트 8개 추가, Dockerfile 권한 수정(WordPress healthy), TODO 정리, pytest-asyncio 설정** |
 | **v6.0.5** | **2026-05-06** | **Round 5 보고서 기반: docker-compose user 지시어 제거, healthcheck curl 전환, Dockerfile 정리 → WordPress healthy 달성** |
+| **v6.0.6** | **2026-05-06** | **설치 버그 수정: mu-plugins 디렉토리 생성, 컨테이너 네이밍 통일, python-dotenv 자동 로딩** |
 
 상세 작업 로그: IMPLEMENTATION_LOG.md
 

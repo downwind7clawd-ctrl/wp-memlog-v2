@@ -7,6 +7,14 @@ import os
 import subprocess
 import sys
 
+# Auto-load .env from project root
+try:
+    from dotenv import load_dotenv
+    _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    load_dotenv(_env_path)
+except ImportError:
+    pass
+
 from wp_memlog import (
     SessionPayload,
     MeiliSearchClient,
@@ -20,7 +28,7 @@ WP_CLI = os.getenv("WP_MEMLOG_WP_CLI", "wp --allow-root --path=/var/www/html")
 
 def wp(*args):
     """Run WP-CLI command."""
-    cmd = ["docker", "exec", "wp-memlog-wp", "wp", "--allow-root"] + list(args)
+    cmd = ["docker", "exec", "wp-memlog-wordpress-1", "wp", "--allow-root"] + list(args)
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         print(f"Warning: WP-CLI error: {result.stderr}", file=sys.stderr)

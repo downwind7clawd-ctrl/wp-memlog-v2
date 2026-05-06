@@ -1,10 +1,10 @@
 # wp-memlog — AI 에이전트를 위한 무한 기억력 시스템
 
-> **Version: v6.0.4** | 2026-05-06
+> **Version: v6.0.6** | 2026-05-06
 > **"세션이 끝나도, 기억은 영원히."**
 > Every session. Every agent. Remembered forever.
 
-![Version](https://img.shields.io/badge/version-6.0.2-blue)
+![Version](https://img.shields.io/badge/version-6.0.6-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Python](https://img.shields.io/badge/python-3.10%2B-brightgreen)
 ![MCP](https://img.shields.io/badge/MCP-native-purple)

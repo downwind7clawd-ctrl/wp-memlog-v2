@@ -537,3 +537,24 @@ No issues found
 ### 결과: 3/3 services healthy
 
 - ✅ pytest: 49 passed | ruff: clean | secret: clean
+
+---
+
+## 2026-05-06 v6.0.6 — 설치 버그 수정
+
+**Trigger:** 데우스가 설치 중 발견한 버그 리스트 (`/tmp/macguffin-wp-memlog-bugfix.md`)
+
+### 수정 내역
+
+| # | 이슈 | 파일 | 해결 |
+|---|------|------|------|
+| 1 | mu-plugins 디렉토리 미생성 시 docker cp 실패 | `scripts/setup.sh` | `docker exec $CT_WP mkdir -p /var/www/html/wp-content/mu-plugins` 추가 |
+| 2 | 컨테이너 네이밍 불일치 (underscore vs hyphen) | `scripts/setup.sh` | 이미 수정됨 (데우스) |
+| 3 | CLI 스크립트 컨테이너 이름 오류 | `src/wp_memlog_cli.py`, `src/collector_cli.py` | 이미 수정됨 (데우스) |
+| 4 | python-dotenv 자동 로딩 부재 | `src/wp_memlog_cli.py`, `src/collector_cli.py` | 이미 수정됨 (데우스) |
+| 5 | python-dotenv pyproject.toml 누락 | `pyproject.toml` | 이미 포함됨 (line 16) |
+
+### 검증 결과
+
+- ✅ setup.sh: mu-plugins 디렉토리 생성 후 docker cp 실패 방지
+- ✅ pytest: 49 passed | ruff: clean | secret: clean
