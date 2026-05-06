@@ -229,7 +229,7 @@ POST → WP 저장 (항상 성공) → 즉시 응답
 - [ ] ClassifAI + Ollama 통합 (완전 $0)
 - [ ] 대시보드 (운영 모니터링)
 - [ ] Meilisearch v1.38+ 업그레이드 (하이브리드 검색)
-- [ ] Meilisearch 키 분리 (인덱싱용/검색용)
+- [x] Meilisearch 키 분리 (인덱싱용/검색용)
 - [ ] Docker 네트워크 격리
 - [ ] 감사 로그 (audit log) 추가
 
@@ -293,6 +293,6 @@ POST → WP 저장 (항상 성공) → 즉시 응답
 | v5.1 | 2026-04-29 | P0/P1 버그 수정 (멱등성, docker-compose env var, backup.sh 보안) |
 | **v5.2** | **2026-05-05** | **setup.sh (원커맨드 설치), doctor.sh (자동 점검), Dockerfile, README 대폭 개선** |
 | **v5.2.0** | **2026-05-06** | **P1/P2 이슈 수정, 단위 테스트 20개 추가, tenacity retry, 보안 강화** |
-| **v5.3.0** | **2026-05-06** | **보안 감사 수정 (P0/P1/P2), 최소 권한 적용, 문서 업데이트** |
+| **v5.3.0** | **2026-05-06** | **보안 감사 수정 (P0/P1/P2), 최소 권한 적용, Meilisearch 키 분리, 문서 업데이트** |
 
 상세 작업 로그: IMPLEMENTATION_LOG.md
