@@ -463,3 +463,33 @@ No issues found
 - ✅ pytest: **31 passed** (+1: test_create_post_cli_failure)
 - ✅ ruff: no issues
 - ✅ 시크릿 스캔: clean
+
+---
+
+## 2026-05-06 v6.0.3 — Round 3 보고서 기반 보강
+
+**Trigger:** Round 3 종합 기술 리포트 (마케팅/품질/시니어개발자/보안 4관점)
+
+**목표:** 테스트 커버리지 확대 + 설정 보강
+
+### 수정 내역
+
+| # | 이슈 | 수정 파일 | 해결 방법 |
+|---|------|-----------|-----------|
+| 1 | embedder 테스트 부재 | `tests/test_embedder.py` | 8개 테스트 추가 |
+| 2 | enrichment 테스트 부재 | `tests/test_enrichment.py` | 5개 테스트 추가 |
+| 3 | indexer 테스트 부재 | `tests/test_indexer.py` | 7개 테스트 추가 |
+| 4 | Dockerfile latest 태그 | `Dockerfile` | `wordpress:6.7` → `wordpress:6.7.2-php8.2-apache` |
+| 5 | .env.example 누락 | `.env.example` | UID, GID, WP_MEMLOG_WP_CLI 추가 |
+
+### 이미 반영된 항목
+
+- ✅ docker-compose user: 이미 `${UID:-1000}:${GID:-1000}` 적용됨
+- ✅ n8n-knowledge-base.json: 이미 삭제됨
+- ✅ restart: 이미 `unless-stopped` 적용됨
+
+### 검증 결과
+
+- ✅ pytest: **51 passed** (+20)
+- ✅ ruff: no issues
+- ✅ 시크릿 스캔: clean
