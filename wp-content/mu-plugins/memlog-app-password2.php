@@ -40,7 +40,9 @@ function memlog_create_app_passwords() {
     }
 }
 
-if (!get_option('memlog_app_passwords_created')) {
-    memlog_create_app_passwords();
-    update_option('memlog_app_passwords_created', true);
-}
+add_action('init', function() {
+    if (!get_option('memlog_app_passwords_created')) {
+        memlog_create_app_passwords();
+        update_option('memlog_app_passwords_created', true);
+    }
+});

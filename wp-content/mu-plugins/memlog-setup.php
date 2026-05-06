@@ -61,7 +61,9 @@ function memlog_do_setup() {
     }
 }
 
-if (!get_option('memlog_setup_done')) {
-    memlog_do_setup();
-    update_option('memlog_setup_done', true);
-}
+add_action('init', function() {
+    if (!get_option('memlog_setup_done')) {
+        memlog_do_setup();
+        update_option('memlog_setup_done', true);
+    }
+});

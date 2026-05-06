@@ -176,7 +176,7 @@ setup_docker() {
     docker compose up -d
 
     log_info "Waiting for containers to be healthy..."
-    local max_wait=120 waited=0
+    local max_wait=300 waited=0
     while [[ $waited -lt $max_wait ]]; do
         local all_healthy=true
         for svc in meilisearch wordpress db; do
@@ -304,7 +304,7 @@ setup_meilisearch() {
 
     # Wait for Meilisearch
     log_info "Waiting for Meilisearch..."
-    local max_wait=30 waited=0
+    local max_wait=60 waited=0
     while [[ $waited -lt $max_wait ]]; do
         if curl -sf "${meili_url}/health" &>/dev/null; then
             break
@@ -345,6 +345,16 @@ setup_meilisearch() {
             "indexes": ["wp_posts"],
             "expiresAt": null
         }' 2>/dev/null && log_ok "Search API key created"
+
+    # Verify master key works
+    local key_check
+    key_check=$(curl -sf -o /dev/null -w "%{http_code}" "${meili_url}/keys" \
+        -H "Authorization: Bearer ${meili_key}" 2>/dev/null || echo "000")
+    if [[ "$key_check" == "200" ]]; then
+        log_ok "Meilisearch key verified"
+    else
+        log_warn "Meilisearch key verification failed (HTTP ${key_check}) — container may need restart"
+    fi
 
     log_ok "Meilisearch ready"
 }

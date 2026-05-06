@@ -51,5 +51,4 @@ function memlog_create_users() {
         }
     }
 }
-register_activation_hook(__FILE__, 'memlog_create_users');
-memlog_create_users();
+add_action('init', 'memlog_create_users');
