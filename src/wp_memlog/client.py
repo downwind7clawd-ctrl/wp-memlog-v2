@@ -114,9 +114,10 @@ class WpClient:
 
 
 class MeiliSearchClient:
-    def __init__(self, url: str, api_key: str, index_name: str = "wp_posts"):
+    def __init__(self, url: str, api_key: str, index_name: str = "wp_posts", search_key: str | None = None):
         self.client = MeiliClient(url, api_key)
         self.index = self.client.index(index_name)
+        self._search_key = search_key
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def index_document(
@@ -173,7 +174,12 @@ class MeiliSearchClient:
         if filters:
             params["filter"] = filters
 
-        results = self.index.search(query, params)
+        # Use search-only key if available (principle of least privilege)
+        if self._search_key:
+            search_client = MeiliClient(self.client.config.url, self._search_key)
+            results = search_client.index(self.index.uid).search(query, params)
+        else:
+            results = self.index.search(query, params)
         out = []
         for hit in results["hits"]:
             excerpt = hit.get("excerpt") or hit.get("content", "")[:500]

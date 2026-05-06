@@ -335,7 +335,8 @@ setup_meilisearch() {
 
     # Create search API key
     log_info "Creating search API key..."
-    curl -sf -X POST "${meili_url}/keys" \
+    local search_key_response
+    search_key_response=$(curl -sf -X POST "${meili_url}/keys" \
         -H "Authorization: Bearer ${meili_key}" \
         -H "Content-Type: application/json" \
         -d '{
@@ -344,7 +345,19 @@ setup_meilisearch() {
             "actions": ["search"],
             "indexes": ["wp_posts"],
             "expiresAt": null
-        }' 2>/dev/null && log_ok "Search API key created"
+        }' 2>/dev/null)
+    if [[ -n "$search_key_response" ]]; then
+        local search_key
+        search_key=$(echo "$search_key_response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('key',''))" 2>/dev/null)
+        if [[ -n "$search_key" ]]; then
+            echo "MEILI_SEARCH_KEY=${search_key}" >> "${ENV_FILE}"
+            log_ok "Search API key created and saved to .env"
+        else
+            log_warn "Search API key created but could not parse key"
+        fi
+    else
+        log_warn "Failed to create search API key"
+    fi
 
     # Verify master key works
     local key_check

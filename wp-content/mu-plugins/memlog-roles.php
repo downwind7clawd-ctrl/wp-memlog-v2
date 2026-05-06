@@ -17,7 +17,7 @@ add_action('wp_loaded', function() {
         'edit_posts' => true,
         'publish_posts' => true,
         'read_private_posts' => true,
-        'edit_private_posts' => true,
+        'edit_private_posts' => false,
         'delete_posts' => false,
         'upload_files' => true,
     ]);

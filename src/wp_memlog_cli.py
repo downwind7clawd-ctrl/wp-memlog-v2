@@ -110,9 +110,10 @@ def search_sessions(
     date_to: str = None,
     limit: int = 5,
     hybrid: float = None,
+    meili_search_key: str = None,
 ):
     """Session search."""
-    cli = MeiliSearchClient(meili_url, meili_key)
+    cli = MeiliSearchClient(meili_url, meili_key, search_key=meili_search_key)
 
     if hybrid:
         pass  # TODO: Meilisearch v1.38+ upgrade 후 구현
@@ -156,6 +157,7 @@ def main():
     search_parser = subparsers.add_parser("search", help="Search sessions")
     search_parser.add_argument("--meili-url", default=os.getenv("WP_MEMLOG_MEILI_URL", "http://127.0.0.1:7700"))
     search_parser.add_argument("--meili-key", default=os.getenv("WP_MEMLOG_MEILI_KEY"))
+    search_parser.add_argument("--meili-search-key", default=os.getenv("MEILI_SEARCH_KEY"))
     search_parser.add_argument("query", help="Search query")
     search_parser.add_argument("--category", default=None)
     search_parser.add_argument("--date-from", default=None, help="Filter from date (ISO)")
@@ -163,7 +165,7 @@ def main():
     search_parser.add_argument("--limit", type=int, default=5)
     search_parser.add_argument("--hybrid", type=float, default=None, help="Hybrid ratio (0.7 = 70% semantic)")
     search_parser.set_defaults(
-        func=lambda a: search_sessions(a.meili_url, a.meili_key, a.query, a.category, a.date_from, a.date_to, a.limit, a.hybrid)
+        func=lambda a: search_sessions(a.meili_url, a.meili_key, a.query, a.category, a.date_from, a.date_to, a.limit, a.hybrid, a.meili_search_key)
     )
 
     args = parser.parse_args()
