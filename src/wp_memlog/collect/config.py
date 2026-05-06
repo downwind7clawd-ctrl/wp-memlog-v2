@@ -11,6 +11,7 @@ class AgentConfig:
     session_dir: str
     session_pattern: str
     cron: str = "0 */6 * * *"
+    category: str = ""
 
 
 @dataclass
@@ -37,7 +38,8 @@ def load_agents_config(path: str = "config/agents.yaml") -> Config:
             enabled=cfg.get("enabled", False),
             session_dir=session_dir,
             session_pattern=cfg["session_pattern"],
-            cron=cfg.get("cron", data.get("defaults", {}).get("cron", "0 */6 * * *"))
+            cron=cfg.get("cron", data.get("defaults", {}).get("cron", "0 */6 * * *")),
+            category=cfg.get("category", name),
         )
 
     return Config(

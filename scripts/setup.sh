@@ -233,9 +233,23 @@ setup_wordpress() {
     $wp rewrite structure '/%postname%/' --hard 2>/dev/null
     log_ok "Permalinks: /%postname%/"
 
-    # Create categories
-    log_info "Creating agent categories..."
-    for cat in deus macguffin hubris; do
+    # Create categories from agents.yaml (dynamic, no hardcoded names)
+    log_info "Creating agent categories from agents.yaml..."
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local project_dir="$(cd "$script_dir/.." && pwd)"
+    local categories
+    categories=$(python3 -c "
+import yaml, sys
+cfg = yaml.safe_load(open('$project_dir/config/agents.yaml'))
+agents = cfg.get('agents', {})
+enabled = [a['category'] for a in agents.values() if a.get('category') and a.get('enabled', False)]
+print(' '.join(enabled))
+" 2>/dev/null)
+    if [ -z "$categories" ]; then
+        log_warn "  No enabled categories found in agents.yaml, using defaults"
+        categories="deus"
+    fi
+    for cat in $categories; do
         if ! $wp term list category --slug="$cat" --field=slug 2>/dev/null | grep -q "$cat"; then
             $wp term create category "$cat" 2>/dev/null && log_ok "  category: $cat" || log_warn "  category: $cat (may already exist)"
         else
