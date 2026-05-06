@@ -387,3 +387,30 @@ No issues found
 - 로그 감사 체계 (syslog/journalctl)
 - API 키 순환 정책 (90일)
 - Telegram Bot Token 외부 시크릿 관리
+
+---
+
+## 2026-05-06 v6.0.0 — 기획
+
+**Trigger:** 데우스 기획서 검토 → 다비드 승인
+
+**목표:** 오픈소스 공개 준비 + 다중 에이전트 생태계 통합
+
+### 구현 예정
+
+| # | 작업 | 파일 | 상태 |
+|---|------|------|------|
+| 1 | 에이전트명 하드코딩 해제 | `config/agents.yaml`, `scripts/setup.sh`, `scripts/doctor.sh` | 🔄 진행 중 |
+| 2 | MCP 서버 구현 | `src/wp_memlog/mcp_server.py` | ⏳ 대기 |
+| 3 | README 영어 재작성 + 마케팅 | `README.md` | ⏳ 대기 |
+| 4 | 다국어 README | `README.ko.md`, `README.zh.md`, `README.ja.md` | ⏳ 대기 |
+| 5 | MCP 샌드박스 테스트 | 샌드박스 환경 | ⏳ 대기 |
+| 6 | 테스트 + 검증 + merge | 전체 | ⏳ 대기 |
+
+### 결정 사항
+
+- MCP 파일: `src/wp_memlog/mcp_server.py` (패키지 내 모듈)
+- MCP 의존성: `mcp[cli]>=1.9.0`, `[optional-dependencies]`에 분리
+- 에이전트명: `agents.yaml`이 소스 오브 트루스, 기존 WP 카테고리 slug 유지
+- 샌드박스: 기존 인프라 재사용, Meilisearch 인덱스만 분리
+- 브랜치: `feature/v6` → 완료 후 `master` merge + tag `v6.0.0`

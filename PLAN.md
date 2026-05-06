@@ -294,5 +294,70 @@ POST → WP 저장 (항상 성공) → 즉시 응답
 | **v5.2** | **2026-05-05** | **setup.sh (원커맨드 설치), doctor.sh (자동 점검), Dockerfile, README 대폭 개선** |
 | **v5.2.0** | **2026-05-06** | **P1/P2 이슈 수정, 단위 테스트 20개 추가, tenacity retry, 보안 강화** |
 | **v5.3.0** | **2026-05-06** | **보안 감사 수정 (P0/P1/P2), 최소 권한 적용, Meilisearch 키 분리, 문서 업데이트** |
+| **v6.0.0** | **2026-05-06** | **MCP 서버, 에이전트명 하드코딩 해제, 다국어 README, 마케팅 개선** |
 
 상세 작업 로그: IMPLEMENTATION_LOG.md
+
+---
+
+## 11. v6.0.0 로드맵 — 오픈소스 공개 + 다중 에이전트 생태계
+
+### 배경
+
+v5.3.0까지 Phase 1~5 완료. 다음 문제 해결:
+1. MCP 미지원 — 각 에이전트가 CLI 수동 명령만 가능
+2. 에이전트명 고정 — setup.sh에 deus, macguffin, hubris 하드코딩
+3. README 한국어 전용 — 글로벌 오픈소스로 부적합
+4. 기술 문서만 존재 — "왜 필요한지" 설명 부재
+
+### Phase 6: MCP 서버 + 에이전트 통합
+
+| # | 작업 | 상태 | 예상 |
+|---|------|------|------|
+| 6.1 | 에이전트명 하드코딩 해제 | 🔄 진행 중 | 1일 |
+| 6.2 | MCP 서버 구현 | ⏳ 대기 | 2일 |
+| 6.3 | README 영어 재작성 + 마케팅 | ⏳ 대기 | 1일 |
+| 6.4 | 다국어 README (ko/zh/ja) | ⏳ 대기 | 1일 |
+| 6.5 | MCP 샌드박스 테스트 | ⏳ 대기 | 1일 |
+| 6.6 | 테스트 + 검증 + merge | ⏳ 대기 | 1일 |
+
+### 6.1 에이전트명 하드코딩 해제
+
+**변경 파일:**
+- `config/agents.yaml` — `category` 필드 추가
+- `scripts/setup.sh` — Python으로 yaml 파싱 → 동적 카테고리 생성
+- `scripts/doctor.sh` — 동일 로직
+- `scripts/collector.sh` — enabled agents 동적 로드
+
+**전제:** `agents.yaml`이 소스 오브 트루스. 기존 WP 카테고리 slug 유지.
+
+### 6.2 MCP 서버
+
+**새 파일:** `src/wp_memlog/mcp_server.py`
+
+**제공 도구:**
+- `memlog_search` — 과거 세션 의미 검색
+- `memlog_post` — 세션 내용 저장
+- `memlog_list_agents` — 등록된 에이전트 목록
+
+**의존성:** `mcp[cli]>=1.9.0` (optional)
+
+### 6.3-6.4 다국어 README
+
+| 파일 | 언어 |
+|------|------|
+| `README.md` | 영어 (기본) |
+| `README.ko.md` | 한국어 |
+| `README.zh.md` | 중국어 |
+| `README.ja.md` | 일본어 |
+
+### 결정 사항
+
+| 항목 | 결정 |
+|------|------|
+| MCP 파일 위치 | `src/wp_memlog/mcp_server.py` |
+| MCP 의존성 | `mcp[cli]>=1.9.0`, optional로 분리 |
+| 에이전트명 | yaml이 소스, 기존 WP 카테고리 유지 |
+| 샌드박스 | 기존 인프라 재사용, 인덱스만 분리 |
+| 번역 | 맥거핀 작성, 다비드 리뷰 |
+| 브랜치 | `feature/v6` → `master` merge |
