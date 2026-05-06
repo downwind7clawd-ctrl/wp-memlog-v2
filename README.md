@@ -1,5 +1,6 @@
 # wp-memlog — AI 에이전트를 위한 무한 기억력 시스템
 
+> **Version: v6.0.4** | 2026-05-06
 > **"세션이 끝나도, 기억은 영원히."**
 > Every session. Every agent. Remembered forever.
 

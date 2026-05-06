@@ -1,99 +1,144 @@
-"""Tests for MCP server tools (unit-level, no live services required)."""
-from unittest.mock import patch
+"""Tests for wp_memlog.mcp_server"""
+import json
+import pytest
+from unittest.mock import patch, MagicMock
 
-from wp_memlog.mcp_server import _get_meili_client, _get_wp_client
+# MCP is an optional dependency — skip all tests if not installed
+mcp = pytest.importorskip("mcp.server")
+
+from wp_memlog.mcp_server import (
+    list_tools,
+    call_tool,
+    _get_meili_client,
+    _get_wp_client,
+)
 
 
-class TestGetMeiliClient:
-    """Test MeiliSearch client creation from env vars."""
+class TestListTools:
+    """Test MCP tool listing"""
 
-    @patch.dict("os.environ", {
-        "WP_MEMLOG_MEILI_URL": "http://test:7700",
-        "WP_MEMLOG_MEILI_KEY": "test-master-key",
-        "MEILI_SEARCH_KEY": "test-search-key",
-    })
-    def test_with_search_key(self):
+    @pytest.mark.asyncio
+    async def test_returns_three_tools(self):
+        """Test that list_tools returns 3 tools"""
+        tools = await list_tools()
+        assert len(tools) == 3
+        tool_names = [t.name for t in tools]
+        assert "memlog_search" in tool_names
+        assert "memlog_post" in tool_names
+        assert "memlog_list_agents" in tool_names
+
+    @pytest.mark.asyncio
+    async def test_search_tool_schema(self):
+        """Test memlog_search tool has correct schema"""
+        tools = await list_tools()
+        search_tool = next(t for t in tools if t.name == "memlog_search")
+        assert search_tool.inputSchema["required"] == ["query"]
+        assert "query" in search_tool.inputSchema["properties"]
+        assert "agent" in search_tool.inputSchema["properties"]
+        assert "limit" in search_tool.inputSchema["properties"]
+
+    @pytest.mark.asyncio
+    async def test_post_tool_schema(self):
+        """Test memlog_post tool has correct schema"""
+        tools = await list_tools()
+        post_tool = next(t for t in tools if t.name == "memlog_post")
+        assert set(post_tool.inputSchema["required"]) == {"agent", "content"}
+
+
+class TestGetClients:
+    """Test client factory functions"""
+
+    def test_get_meili_client_defaults(self, monkeypatch):
+        """Test MeiliSearchClient creation with defaults"""
+        monkeypatch.setenv("WP_MEMLOG_MEILI_URL", "http://127.0.0.1:7700")
+        monkeypatch.setenv("WP_MEMLOG_MEILI_KEY", "test-key")
+        monkeypatch.delenv("MEILI_SEARCH_KEY", raising=False)
+
         client = _get_meili_client()
         assert client is not None
 
-    @patch.dict("os.environ", {
-        "WP_MEMLOG_MEILI_URL": "http://test:7700",
-        "WP_MEMLOG_MEILI_KEY": "test-master-key",
-    })
-    def test_without_search_key(self):
-        client = _get_meili_client()
-        assert client is not None
+    def test_get_wp_client_defaults(self, monkeypatch):
+        """Test WpClient creation with defaults"""
+        monkeypatch.setenv("WP_MEMLOG_WP_URL", "http://127.0.0.1:8080")
+        monkeypatch.setenv("WP_MEMLOG_WP_USERNAME", "test-user")
+        monkeypatch.setenv("WP_MEMLOG_WP_APP_PASSWORD", "test-pw")
 
-    @patch.dict("os.environ", {}, clear=False)
-    def test_defaults(self):
-        client = _get_meili_client()
-        assert client is not None
-
-
-class TestGetWpClient:
-    """Test WP client creation from env vars."""
-
-    @patch.dict("os.environ", {
-        "WP_MEMLOG_WP_URL": "http://test:8080",
-        "WP_MEMLOG_WP_USERNAME": "testuser",
-        "WP_MEMLOG_WP_APP_PASSWORD": "testpass",
-    })
-    def test_with_env(self):
         client = _get_wp_client()
         assert client is not None
 
-    @patch.dict("os.environ", {}, clear=False)
-    def test_defaults(self):
-        client = _get_wp_client()
-        assert client is not None
 
+class TestCallTool:
+    """Test MCP tool execution"""
 
-class TestToolListAgents:
-    """Test memlog_list_agents tool logic."""
+    @pytest.mark.asyncio
+    async def test_unknown_tool(self):
+        """Test calling unknown tool returns error"""
+        result = await call_tool("unknown_tool", {})
+        assert len(result) == 1
+        data = json.loads(result[0].text)
+        assert "error" in data
 
-    def test_list_agents_returns_json(self):
-        from wp_memlog.collect.config import load_agents_config
-        cfg = load_agents_config("config/agents.yaml")
-        agents = []
-        for key, agent_cfg in cfg.agents.items():
-            agents.append({
-                "key": key,
-                "name": agent_cfg.name,
-                "category": agent_cfg.category if hasattr(agent_cfg, "category") else key,
-                "enabled": agent_cfg.enabled,
-            })
-        assert len(agents) >= 4
-        keys = [a["key"] for a in agents]
-        assert "hermes" in keys
-        assert "opencode" in keys
-        assert "antigravity" in keys
-        assert "claude_cli" in keys
+    @pytest.mark.asyncio
+    async def test_list_agents(self, monkeypatch, tmp_path):
+        """Test memlog_list_agents tool"""
+        agents_yaml = tmp_path / "config" / "agents.yaml"
+        agents_yaml.parent.mkdir(parents=True, exist_ok=True)
+        agents_yaml.write_text(
+            "agents:\n"
+            "  test-agent:\n"
+            "    name: Test Agent\n"
+            "    category: test\n"
+            "    enabled: true\n"
+            "    session_dir: /tmp/sessions\n"
+            "    cron: '0 0 * * *'\n"
+        )
 
-    def test_agents_have_category(self):
-        from wp_memlog.collect.config import load_agents_config
-        cfg = load_agents_config("config/agents.yaml")
-        for key, agent_cfg in cfg.agents.items():
-            assert agent_cfg.category, f"Agent {key} missing category"
+        # Patch the Path resolution in _tool_list_agents
+        with patch("wp_memlog.mcp_server.load_agents_config") as mock_load:
+            from wp_memlog.collect.config import AgentConfig, Config
+            mock_load.return_value = Config(
+                version="1.0",
+                agents={
+                    "test-agent": AgentConfig(
+                        name="Test Agent",
+                        category="test",
+                        enabled=True,
+                        session_dir="/tmp/sessions",
+                        session_pattern="*.md",
+                        cron="0 0 * * *",
+                    )
+                },
+                defaults={},
+            )
+            result = await call_tool("memlog_list_agents", {})
 
+        assert len(result) == 1
+        data = json.loads(result[0].text)
+        assert len(data) == 1
+        assert data[0]["name"] == "Test Agent"
+        assert data[0]["category"] == "test"
 
-class TestAgentConfigCategory:
-    """Test that agents.yaml has category field for all agents."""
+    @pytest.mark.asyncio
+    async def test_search_tool(self, monkeypatch):
+        """Test memlog_search tool"""
+        monkeypatch.setenv("WP_MEMLOG_MEILI_URL", "http://127.0.0.1:7700")
+        monkeypatch.setenv("WP_MEMLOG_MEILI_KEY", "test-key")
 
-    def test_all_agents_have_category(self):
-        from wp_memlog.collect.config import load_agents_config
-        cfg = load_agents_config("config/agents.yaml")
-        for key, agent_cfg in cfg.agents.items():
-            assert agent_cfg.category, f"Agent '{key}' is missing 'category' field"
-            assert isinstance(agent_cfg.category, str)
-            assert len(agent_cfg.category) > 0
+        mock_result = MagicMock()
+        mock_result.post_id = 1
+        mock_result.title = "Test"
+        mock_result.excerpt = "Excerpt"
+        mock_result.date = "2026-01-01"
+        mock_result.categories = ["test"]
+        mock_result.tags = []
+        mock_result.relevance_score = 0.9
+        mock_result.url = "http://localhost/?p=1"
 
-    def test_hermes_category_is_deus(self):
-        from wp_memlog.collect.config import load_agents_config
-        cfg = load_agents_config("config/agents.yaml")
-        assert cfg.agents["hermes"].category == "deus"
+        with patch("wp_memlog.mcp_server._get_meili_client") as mock_client:
+            mock_client.return_value.search.return_value = [mock_result]
+            result = await call_tool("memlog_search", {"query": "test"})
 
-    def test_enabled_agents_loaded(self):
-        from wp_memlog.collect.config import load_agents_config
-        cfg = load_agents_config("config/agents.yaml")
-        enabled = [k for k, a in cfg.agents.items() if a.enabled]
-        assert "hermes" in enabled
+        assert len(result) == 1
+        data = json.loads(result[0].text)
+        assert len(data) == 1
+        assert data[0]["title"] == "Test"

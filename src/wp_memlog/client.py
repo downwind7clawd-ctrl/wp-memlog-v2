@@ -191,11 +191,7 @@ class MeiliSearchClient:
         filters = []
         if category:
             filters.append(f"categories = {category}")
-        # TODO: Meilisearch v1.38+ upgrade 후 date 필터 활성화
-        # if date_from:
-        #     filters.append(f"date >= {date_from}")
-        # if date_to:
-        #     filters.append(f"date <= {date_to}")
+        # NOTE: date filter requires Meilisearch v1.38+ (current: v1.12)
 
         params = {
             "limit": limit,

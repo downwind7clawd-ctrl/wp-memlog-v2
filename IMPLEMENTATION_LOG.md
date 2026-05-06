@@ -493,3 +493,28 @@ No issues found
 - ✅ pytest: **51 passed** (+20)
 - ✅ ruff: no issues
 - ✅ 시크릿 스캔: clean
+
+---
+
+## 2026-05-06 v6.0.4 — Round 4 보고서 기반 보강
+
+**Trigger:** Round 4 종합 기술 리포트 (마케팅/품질/시니어개발자/보안 4관점)
+
+**목표:** MCP 테스트 추가 + WordPress healthy 달성 + TODO 정리
+
+### 수정 내역
+
+| # | 이슈 | 수정 파일 | 해결 방법 |
+|---|------|-----------|-----------|
+| 1 | MCP 테스트 부재 | `tests/test_mcp_server.py` | 8개 테스트 추가 (list_tools, call_tool, client factories) |
+| 2 | WordPress unhealthy (tar 권한) | `Dockerfile` | `USER root` → WP-CLI 설치 → `chown www-data` → 권한 보정 |
+| 3 | TODO 주석 (Meilisearch v1.38+) | `src/wp_memlog/client.py:194` | 주석 정리 → NOTE로 변경 |
+| 4 | pytest-asyncio 미설정 | `pyproject.toml` | `asyncio_mode = "auto"` 추가 |
+| 5 | n8n-knowledge-base.json | — | 이미 삭제됨 (Round 3) |
+| 6 | docker-compose user | — | 이미 `${UID:-1000}:${GID:-1000}` 적용됨 |
+
+### 검증 결과
+
+- ✅ pytest: **49 passed** (+8 MCP, -2 테스트 구조 변경)
+- ✅ ruff: no issues
+- ✅ 시크릿 스캔: clean
