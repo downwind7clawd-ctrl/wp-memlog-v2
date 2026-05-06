@@ -408,8 +408,8 @@ setup_python() {
     fi
 
     log_info "Installing Python dependencies..."
-    "$PROJECT_DIR/.venv/bin/pip" install -e "$PROJECT_DIR" 2>&1 | tail -3
-    log_ok "Python package installed"
+    "$PROJECT_DIR/.venv/bin/pip" install -e "$PROJECT_DIR[mcp]" 2>&1 | tail -3
+    log_ok "Python package installed (with MCP support)"
 
     # Quick import test
     if "$PROJECT_DIR/.venv/bin/python3" -c "from wp_memlog import session, client, embedder, indexer; print('OK')" 2>/dev/null; then
