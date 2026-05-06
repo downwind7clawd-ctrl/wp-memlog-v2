@@ -296,6 +296,7 @@ POST → WP 저장 (항상 성공) → 즉시 응답
 | **v5.3.0** | **2026-05-06** | **보안 감사 수정 (P0/P1/P2), 최소 권한 적용, Meilisearch 키 분리, 문서 업데이트** |
 | **v6.0.0** | **2026-05-06** | **MCP 서버, 에이전트명 하드코딩 해제, 다국어 README, 마케팅 개선** |
 | **v6.0.1** | **2026-05-06** | **Round 1 테스트 보고서 기반 보강: container_name 제거, follow_redirects, category slug→ID, 스크립트 동적 컨테이너명** |
+| **v6.0.2** | **2026-05-06** | **Round 2 보고서 기반 보강: WP-CLI 전환(REST API 401 해결), 보안 강화(에러 메시지 숨김), healthcheck 통일, README 마케팅 전환** |
 
 상세 작업 로그: IMPLEMENTATION_LOG.md
 

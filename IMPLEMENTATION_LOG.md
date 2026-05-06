@@ -439,3 +439,27 @@ No issues found
 - ✅ ruff: no issues
 - ✅ 시크릿 스캔: clean
 - ✅ 9 files changed, +68/-41
+
+---
+
+## 2026-05-06 v6.0.2 — Round 2 보고서 기반 보강
+
+**Trigger:** `/tmp/sandbox/wp-memlog-v2/TEST_REPORT_v6.0.1_Round2.md` 리뷰
+
+**목표:** REST API 401 해결 + 보안 강화 + 문서 개선
+
+### 수정 내역
+
+| # | 이슈 | 수정 파일 | 해결 방법 |
+|---|------|-----------|-----------|
+| 1 | REST API 401 인증 에러 | `src/wp_memlog/client.py` | `create_post`/`update_post` → WP-CLI subprocess 전환 |
+| 2 | 에러 메시지 상세 노출 | `src/wp_memlog/client.py` | 내부 로깅 유지, 외부에는 일반화된 메시지 |
+| 3 | healthcheck 비통일 | `docker-compose.yml` | WordPress → `wget --spider` REST API 엔드포인트 체크 |
+| 4 | README 설치 중심 | `README.md` | 슬로건, Why 테이블, Use Cases 섹션 추가 |
+| 5 | 커밋 전 문서 현행화 규칙 부재 | `AGENTS.md` | 문서 현행화 필수 규칙 추가 |
+
+### 검증 결과
+
+- ✅ pytest: **31 passed** (+1: test_create_post_cli_failure)
+- ✅ ruff: no issues
+- ✅ 시크릿 스캔: clean

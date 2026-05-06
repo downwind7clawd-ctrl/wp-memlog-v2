@@ -1,12 +1,18 @@
 """WordPress REST API client + Meilisearch search"""
 
+import json
+import logging
 import os
+import shlex
+import subprocess
 from dataclasses import dataclass
 from typing import Optional
 
 import httpx
 from meilisearch import Client as MeiliClient
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -32,11 +38,19 @@ class SearchResult:
 
 
 class WpClient:
-    def __init__(self, wp_url: str, username: str, app_password: str):
+    def __init__(self, wp_url: str, username: str, app_password: str, wp_cli: str = "wp"):
         self.wp_url = wp_url.rstrip("/")
         self.auth = (username, app_password)
+        self._wp_cli = wp_cli
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
+    def _wp_cli_run(self, *args) -> str:
+        """Run a WP-CLI command and return stdout. Raises on failure."""
+        cmd = [self._wp_cli, "--allow-root", "--path=/var/www/html", *args]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if result.returncode != 0:
+            raise RuntimeError(f"WP-CLI failed: {result.stderr.strip()}")
+        return result.stdout.strip()
+
     def create_post(
         self,
         title: str,
@@ -45,39 +59,33 @@ class WpClient:
         category: Optional[int] = None,
         meta: Optional[dict] = None,
     ) -> int:
-        """Create a new post."""
-        data = {
-            "title": title,
-            "content": content,
-            "status": status,
-        }
+        """Create a new post via WP-CLI (avoids REST API auth issues)."""
+        args = [
+            "post", "create",
+            f"--post_title={shlex.quote(title)}",
+            f"--post_content={shlex.quote(content)}",
+            f"--post_status={shlex.quote(status)}",
+        ]
         if category:
-            data["categories"] = [category]
+            args.append(f"--post_category={category}")
         if meta:
-            data["meta"] = meta
+            for k, v in meta.items():
+                args.append(f"--meta_input={shlex.quote(json.dumps({k: v}))}")
+        args.append("--porcelain")
 
-        with httpx.Client(follow_redirects=True) as http:
-            resp = http.post(
-                f"{self.wp_url}/wp-json/wp/v2/posts",
-                auth=self.auth,
-                json=data,
-                timeout=30,
-            )
-            resp.raise_for_status()
-            return resp.json()["id"]
+        output = self._wp_cli_run(*args)
+        return int(output)
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def update_post(self, post_id: int, **kwargs) -> dict:
-        """Update a post."""
-        with httpx.Client(follow_redirects=True) as http:
-            resp = http.post(
-                f"{self.wp_url}/wp-json/wp/v2/posts/{post_id}",
-                auth=self.auth,
-                json=kwargs,
-                timeout=30,
-            )
-            resp.raise_for_status()
-            return resp.json()
+        """Update a post via WP-CLI."""
+        args = ["post", "update", str(post_id)]
+        for k, v in kwargs.items():
+            if k == "meta":
+                args.append(f"--meta_input={shlex.quote(json.dumps(v))}")
+            else:
+                args.append(f"--{k}={shlex.quote(str(v))}")
+        self._wp_cli_run(*args)
+        return {"id": post_id, "updated": True}
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def get_post(self, post_id: int) -> dict:
@@ -88,7 +96,9 @@ class WpClient:
                 auth=self.auth,
                 timeout=30,
             )
-            resp.raise_for_status()
+            if resp.status_code >= 400:
+                logger.error("WP REST error %d for get_post(%d): %s", resp.status_code, post_id, resp.text)
+                resp.raise_for_status()
             return resp.json()
 
     def resolve_category(self, slug: str) -> int | None:
@@ -100,7 +110,9 @@ class WpClient:
                 params={"slug": slug, "per_page": 1},
                 timeout=30,
             )
-            resp.raise_for_status()
+            if resp.status_code >= 400:
+                logger.error("WP REST error %d for resolve_category(%s): %s", resp.status_code, slug, resp.text)
+                resp.raise_for_status()
             cats = resp.json()
             if cats:
                 return cats[0]["id"]
@@ -124,7 +136,9 @@ class WpClient:
                 params=params,
                 timeout=30,
             )
-            resp.raise_for_status()
+            if resp.status_code >= 400:
+                logger.error("WP REST error %d for list_posts: %s", resp.status_code, resp.text)
+                resp.raise_for_status()
             return resp.json()
 
 

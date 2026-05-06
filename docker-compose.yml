@@ -46,7 +46,7 @@ services:
       - "127.0.0.1:8080:80"
     command: apache2-foreground
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:80"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80/wp-json/wp/v2/"]
       interval: 10s
       timeout: 5s
       retries: 5

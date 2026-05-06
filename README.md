@@ -1,13 +1,26 @@
-# wp-memlog — Give Your AI Agent Infinite Memory
+# wp-memlog — AI 에이전트를 위한 무한 기억력 시스템
 
+> **"세션이 끝나도, 기억은 영원히."**
 > Every session. Every agent. Remembered forever.
 
-![Version](https://img.shields.io/badge/version-6.0.0-blue)
+![Version](https://img.shields.io/badge/version-6.0.2-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Python](https://img.shields.io/badge/python-3.10%2B-brightgreen)
 ![MCP](https://img.shields.io/badge/MCP-native-purple)
 
 **wp-memlog** is an open-source memory system for AI agents. It automatically saves session transcripts to WordPress and makes them searchable via Meilisearch — with optional semantic search, MCP native support, and multi-agent shared memory.
+
+---
+
+## Why wp-memlog?
+
+| Pain Point | Solution |
+|---|---|
+| AI agents forget everything between sessions | **Infinite memory** — every session saved & indexed |
+| Re-explaining context every time | **Smart search** — find any past session in milliseconds |
+| Cloud-locked memory services ($$$) | **100% local** — your data stays on your server |
+| Single-agent silos | **Multi-agent** — all agents share one memory pool |
+| Complex infrastructure | **One command** — `setup.sh` handles everything |
 
 ---
 
@@ -23,6 +36,37 @@ AI agents forget everything between sessions. You repeat context, re-explain dec
 - **Zero search cost** — Local bge-m3 embeddings, no per-query fees
 - **MCP native** — Any MCP-compatible client can search and save sessions
 - **No vendor lock-in** — WordPress + Meilisearch, both open-source
+
+---
+
+## Use Cases
+
+### 🔬 Research Agent → Knowledge Base
+```
+Hermes (Claude Code) analyzes code → saves findings to WP
+→ Searchable by OpenCode later → No context loss across sessions
+```
+
+### 📝 Daily Memoir → KDP Publishing
+```
+AntiGravity writes daily logs → auto-saved to WP
+→ Weekly: export all posts → generate KDP book draft
+→ Monthly: publish memoir with zero manual work
+```
+
+### 🤖 Multi-Agent Collaboration
+```
+Hermes: "Found bug in auth module" → saved
+OpenCode: searches "auth bug" → finds Hermes's finding
+→ Builds on previous work without re-explaining
+```
+
+### 📊 Session Analytics
+```
+3 years × 20 sessions/day = ~21,900 sessions
+→ All searchable by date, agent, category, content
+→ Pattern recognition across years of work
+```
 
 ---
 

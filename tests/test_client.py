@@ -8,35 +8,38 @@ from wp_memlog.client import WpClient, MeiliSearchClient, PostResult, SearchResu
 class TestWpClient:
     """Test WpClient class"""
 
-    def test_create_post(self, httpx_mock):
-        """Test creating a post via WP REST API"""
-        httpx_mock.add_response(
-            url="http://127.0.0.1:8080/wp-json/wp/v2/posts",
-            json={"id": 42},
-        )
+    @patch("wp_memlog.client.subprocess.run")
+    def test_create_post(self, mock_run):
+        """Test creating a post via WP-CLI"""
+        mock_run.return_value = MagicMock(returncode=0, stdout="42", stderr="")
         client = WpClient("http://127.0.0.1:8080", "admin", "password")
         post_id = client.create_post("Test Title", "Test Content")
         assert post_id == 42
+        mock_run.assert_called_once()
 
-    def test_create_post_with_category(self, httpx_mock):
+    @patch("wp_memlog.client.subprocess.run")
+    def test_create_post_with_category(self, mock_run):
         """Test creating a post with category"""
-        httpx_mock.add_response(
-            url="http://127.0.0.1:8080/wp-json/wp/v2/posts",
-            json={"id": 43},
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="43", stderr="")
         client = WpClient("http://127.0.0.1:8080", "admin", "password")
         post_id = client.create_post("Test", "Content", category=5)
         assert post_id == 43
 
-    def test_create_post_with_meta(self, httpx_mock):
+    @patch("wp_memlog.client.subprocess.run")
+    def test_create_post_with_meta(self, mock_run):
         """Test creating a post with meta fields"""
-        httpx_mock.add_response(
-            url="http://127.0.0.1:8080/wp-json/wp/v2/posts",
-            json={"id": 44},
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="44", stderr="")
         client = WpClient("http://127.0.0.1:8080", "admin", "password")
         post_id = client.create_post("Test", "Content", meta={"_memlog_idem": "uuid-123"})
         assert post_id == 44
+
+    @patch("wp_memlog.client.subprocess.run")
+    def test_create_post_cli_failure(self, mock_run):
+        """Test that WP-CLI failure raises RuntimeError"""
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Error: DB connection failed")
+        client = WpClient("http://127.0.0.1:8080", "admin", "password")
+        with pytest.raises(RuntimeError, match="WP-CLI failed"):
+            client.create_post("Test", "Content")
 
     def test_get_post(self, httpx_mock):
         """Test getting a post"""
@@ -67,27 +70,22 @@ class TestWpClient:
         posts = client.list_posts(per_page=1, offset=10)
         assert len(posts) == 1
 
-    def test_update_post(self, httpx_mock):
-        """Test updating a post"""
-        httpx_mock.add_response(
-            url="http://127.0.0.1:8080/wp-json/wp/v2/posts/42",
-            json={"id": 42, "title": {"rendered": "Updated"}},
-        )
+    @patch("wp_memlog.client.subprocess.run")
+    def test_update_post(self, mock_run):
+        """Test updating a post via WP-CLI"""
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         client = WpClient("http://127.0.0.1:8080", "admin", "password")
         result = client.update_post(42, title="Updated")
         assert result["id"] == 42
+        assert result["updated"] is True
 
-    def test_create_post_http_error(self, httpx_mock):
-        """Test that HTTP errors are raised"""
-        # Register multiple responses for tenacity retry (3 attempts)
-        for _ in range(3):
-            httpx_mock.add_response(
-                url="http://127.0.0.1:8080/wp-json/wp/v2/posts",
-                status_code=401,
-            )
+    @patch("wp_memlog.client.subprocess.run")
+    def test_update_post_with_meta(self, mock_run):
+        """Test updating a post with meta"""
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         client = WpClient("http://127.0.0.1:8080", "admin", "password")
-        with pytest.raises(Exception):
-            client.create_post("Test", "Content")
+        result = client.update_post(42, title="Updated", meta={"_key": "value"})
+        assert result["id"] == 42
 
 
 class TestMeiliSearchClient:
