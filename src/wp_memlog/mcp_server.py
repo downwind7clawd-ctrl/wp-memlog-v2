@@ -51,12 +51,12 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="memlog_post",
-            description="Save a session to WordPress and index in Meilisearch",
+            description="Save a FULL session transcript to WordPress and index in Meilisearch. IMPORTANT: Always pass the complete conversation log, NOT a summary. Summaries are prohibited — the design intent is lossless transcript storage.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "agent": {"type": "string", "description": "Agent name (must match agents.yaml category)"},
-                    "content": {"type": "string", "description": "Session content to save"},
+                    "content": {"type": "string", "description": "FULL session transcript to save. Must be the complete conversation log, NOT a summary or digest."},
                     "title": {"type": "string", "description": "Post title (optional, auto-generated if empty)"},
                     "date": {"type": "string", "description": "Date YYYY-MM-DD (optional, default: today)"},
                 },
