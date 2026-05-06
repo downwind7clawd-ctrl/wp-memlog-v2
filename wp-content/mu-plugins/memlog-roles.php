@@ -20,7 +20,6 @@ add_action('wp_loaded', function() {
         'edit_private_posts' => true,
         'delete_posts' => false,
         'upload_files' => true,
-        'edit_others_posts' => true,
     ]);
 
     add_role('memlog_reader', 'Memlog Reader', [

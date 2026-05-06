@@ -1,6 +1,6 @@
 #!/bin/bash
 # monitor.sh — 임계치 초과 시 알림 (1분 cron용)
-# 사용: crontab -e → */1 * * * * /home/david/nas_1tb/dev/wp-memlog/scripts/monitor.sh
+# 사용: crontab -e → */1 * * * * /path/to/wp-memlog/scripts/monitor.sh
 
 set -e
 

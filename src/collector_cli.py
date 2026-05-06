@@ -15,7 +15,7 @@ from wp_memlog.collect import (
 from wp_memlog.collect.config import load_agents_config
 from wp_memlog import MeiliSearchClient, SessionPayload
 
-WP_CLI = "docker exec wp-memlog-wp wp --allow-root"
+WP_CLI = os.getenv("WP_CLI", "docker exec wp-memlog-wp wp --allow-root")
 
 
 def wp_cli(*args):
