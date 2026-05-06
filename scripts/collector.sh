@@ -14,15 +14,27 @@ run_collector() {
     "$PROJECT_DIR/.venv/bin/python3" "$PROJECT_DIR/src/collector_cli.py" --config "$CONFIG" collect "$AGENT" 2>&1
 }
 
-daemon_mode() {
-    echo "Starting collector daemon (interval: ${INTERVAL}s)"
-    while true; do
-        for AGENT in hermes opencode; do
-            run_collector "$AGENT"
+    daemon_mode() {
+        echo "Starting collector daemon (interval: ${INTERVAL}s)"
+        while true; do
+            # Load enabled agents dynamically from agents.yaml
+            AGENTS=$(python3 -c "
+import yaml
+cfg = yaml.safe_load(open('$CONFIG'))
+agents = cfg.get('agents', {})
+enabled = [k for k, a in agents.items() if a.get('enabled', False)]
+print(' '.join(enabled))
+" 2>/dev/null)
+            if [ -z "$AGENTS" ]; then
+                echo "[$(date)] WARNING: No enabled agents in agents.yaml, using 'hermes'"
+                AGENTS="hermes"
+            fi
+            for AGENT in $AGENTS; do
+                run_collector "$AGENT"
+            done
+            sleep "$INTERVAL"
         done
-        sleep "$INTERVAL"
-    done
-}
+    }
 
 case "${1:-}" in
     --run)

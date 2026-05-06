@@ -8,25 +8,37 @@ defaults:
 agents:
   hermes:
     name: "Hermes (Claude Code)"
+    display_name: "Deus"
+    category: "deus"           # WP category slug (existing, do not change)
     enabled: true
     session_dir: "{{HOME}}/.claude/projects"
     session_pattern: "*/memory/*.md"
     cron: "0 */6 * * *"
+    description: "Primary agent — Claude Code sessions"
 
   opencode:
     name: "OpenCode"
+    display_name: "MacGuffin"
+    category: "opencode"       # WP category slug
     enabled: false
     session_dir: "{{HOME}}/.opencode/sessions"
     session_pattern: "*.json"
+    description: "OpenCode agent sessions"
 
   antigravity:
     name: "AntiGravity"
+    display_name: "AntiGravity"
+    category: "antigravity"    # WP category slug
     enabled: false
     session_dir: "{{HOME}}/.antigravity/sessions"
     session_pattern: "*.json"
+    description: "AntiGravity agent sessions"
 
   claude_cli:
     name: "Claude CLI"
+    display_name: "Claude CLI"
+    category: "claude-cli"     # WP category slug
     enabled: false
     session_dir: "{{HOME}}/.config/Claude/sessions"
     session_pattern: "*.json"
+    description: "Claude CLI sessions"

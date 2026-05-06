@@ -74,8 +74,20 @@ else
     fail "WordPress not installed"
 fi
 
-# Check categories
-for cat in deus macguffin hubris; do
+# Check categories from agents.yaml (dynamic)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+categories=$(python3 -c "
+import yaml
+cfg = yaml.safe_load(open('$PROJECT_DIR/config/agents.yaml'))
+agents = cfg.get('agents', {})
+enabled = [a['category'] for a in agents.values() if a.get('category') and a.get('enabled', False)]
+print(' '.join(enabled))
+" 2>/dev/null)
+if [ -z "$categories" ]; then
+    categories="deus"
+fi
+for cat in $categories; do
     if $WP term list category --slug="$cat" --field=slug 2>/dev/null | grep -q "$cat"; then
         ok "  category: $cat"
     else
