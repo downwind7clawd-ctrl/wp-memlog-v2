@@ -12,8 +12,8 @@ add_filter("classifai_openai_api_request_post_url", function($url, $options, $fe
 add_filter("classifai_openai_api_request_headers", function($headers, $options, $feature) {
     $api_key = getenv('OPENROUTER_API_KEY');
     if (!$api_key) {
-        // Fallback to WP option if env not set
-        $api_key = get_option('wp_memlog_openrouter_key', '');
+        error_log('wp-memlog: OPENROUTER_API_KEY not set');
+        return $headers;
     }
     if ($api_key) {
         $headers["Authorization"] = "Bearer " . $api_key;
@@ -31,11 +31,11 @@ add_filter("classifai_openai_message_content", function($content, $message, $fea
     ]);
 }, 10, 3);
 
-// Bypass authentication completely
+// Only enable for authenticated users with edit capability
 add_filter("classifai_feature_excerpt_generation_is_feature_enabled", function($is_enabled, $settings) {
-    return true;
+    return current_user_can('edit_posts');
 }, 10, 2);
 
 add_filter("classifai_openai_chatgpt_authenticated", function($authenticated, $settings) {
-    return true;
+    return current_user_can('edit_posts');
 }, 10, 2);

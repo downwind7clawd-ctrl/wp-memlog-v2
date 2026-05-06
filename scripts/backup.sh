@@ -26,9 +26,17 @@ docker run --rm \
     -v "${SCRIPT_DIR}/backup:/backup" \
     alpine tar czf "/backup/wp_${DATE}.tar.gz" -C /data .
 
-# MariaDB dump
-docker exec wp-memlog-db mysqldump -u root -p"${MYSQL_ROOT_PASSWORD}" wp_memlog \
-    > "${BACKUP_DIR}/db_${DATE}.sql"
+# MariaDB dump (password via defaults file to avoid ps exposure)
+docker exec wp-memlog-db bash -c '
+cat > /tmp/.my.cnf <<EOF
+[mysqldump]
+user=root
+password=${MYSQL_ROOT_PASSWORD}
+EOF
+chmod 600 /tmp/.my.cnf
+mysqldump --defaults-extra-file=/tmp/.my.cnf wp_memlog
+rm -f /tmp/.my.cnf
+' > "${BACKUP_DIR}/db_${DATE}.sql"
 
 echo "Done! Files:"
 ls -lh "${BACKUP_DIR}"/

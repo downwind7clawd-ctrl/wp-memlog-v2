@@ -2,6 +2,7 @@
 """wp-memlog collector CLI - Multi-agent session collector"""
 import argparse
 import os
+import shlex
 import subprocess
 import sys
 
@@ -79,8 +80,8 @@ def collect_agent(
                     # Create post via WP-CLI
                     output, stderr, code = wp_cli(
                         "post", "create",
-                        f"--post_title={payload.title}",
-                        f"--post_content={payload.content}",
+                        f"--post_title={shlex.quote(payload.title)}",
+                        f"--post_content={shlex.quote(payload.content)}",
                         "--post_status=private",
                         "--post_author=admin",
                         "--format=id"
@@ -92,7 +93,7 @@ def collect_agent(
                         continue
 
                     # Add meta
-                    wp_cli("post", "meta", "update", str(post_id), "_memlog_idem", payload.idem_key)
+                    wp_cli("post", "meta", "update", str(post_id), "_memlog_idem", shlex.quote(payload.idem_key))
 
                     # Index to Meilisearch
                     meili_client.index_document(
@@ -114,8 +115,14 @@ def collect_agent(
 
 def parse_session_to_payload(session: SessionFile, agent_name: str) -> SessionPayload | None:
     """Parse md session file into SessionPayload"""
+    # Path traversal protection
+    real_path = os.path.realpath(session.path)
+    real_dir = os.path.realpath(os.path.dirname(session.path))
+    if not real_path.startswith(real_dir):
+        print(f"  WARN: Path traversal detected: {session.path}")
+        return None
     try:
-        with open(session.path) as f:
+        with open(real_path) as f:
             content = f.read()
     except Exception:
         return None
