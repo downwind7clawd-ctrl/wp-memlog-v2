@@ -59,7 +59,7 @@ class WpClient:
         self,
         title: str,
         content: str,
-        status: str = "private",
+        status: str = "publish",
         category: Optional[int] = None,
         meta: Optional[dict] = None,
     ) -> int:
@@ -161,7 +161,7 @@ class MeiliSearchClient:
         excerpt: Optional[str] = None,
         categories: Optional[list] = None,
         date: Optional[str] = None,
-        status: str = "private",
+        status: str = "publish",
         enriched: bool = False,
     ):
         """Index a document."""

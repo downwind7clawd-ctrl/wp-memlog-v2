@@ -140,7 +140,7 @@ async def _tool_post(args: dict) -> list[TextContent]:
     post_id = wp.create_post(
         title=payload.title,
         content=payload.content,
-        status="private",
+        status="publish",
         category=category_id,
     )
 
@@ -152,7 +152,7 @@ async def _tool_post(args: dict) -> list[TextContent]:
         content=payload.content,
         categories=[payload.category],
         date=date_str,
-        status="private",
+        status="publish",
     )
 
     output = {
